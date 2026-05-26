@@ -18,6 +18,9 @@
 
 ```bash
 npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
 npm run dev
 ```
 
@@ -113,6 +116,15 @@ npm run db:reset
 - 创建 `prisma/seed.ts`，提供分类、商品、规格、库存、文章分类、文章和 Setting seed 数据。
 - 创建 `lib/db.ts`，在 Next.js dev 环境中复用 PrismaClient。
 
+第三阶段已完成：
+
+- `/products` 从数据库读取 active 商品、分类、规格和可用库存数量。
+- `/products/[slug]` 从数据库读取商品详情、active 规格、价格和库存。
+- 商品详情页提供基础下单表单：规格、数量、联系方式和人工支付方式。
+- 新增 `POST /api/orders`，创建 `pending` 支付状态、`pending` 发货状态、`pending_payment` 订单状态的订单。
+- 新增 `/order/[orderNo]/pay` 人工支付说明页，展示订单信息、付款说明和客服联系方式。
+- 第三阶段订单不会扣减库存，不会创建发货内容，不会自动发货。
+
 ## 当前阶段限制
 
 - 不接入真实支付。
@@ -121,7 +133,8 @@ npm run db:reset
 - 不实现自动发货 API。
 - 不实现订单查询 API。
 - 不实现完整后台业务。
+- 不实现后台人工确认付款。
 
 ## 下一阶段开发计划
 
-下一阶段建议进入“阶段 3：商品读取 + 下单流程”，把前台商品列表和商品详情从 mock 数据切换为数据库读取，并实现基础下单记录创建。第三阶段仍不接真实支付。
+下一阶段建议进入“阶段 4：后台人工确认付款 + 自动发货”，实现后台订单查看、管理员人工确认付款、库存分配和发货内容生成。第四阶段开始前仍不要接入真实支付网关。

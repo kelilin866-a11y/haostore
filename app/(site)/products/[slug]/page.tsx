@@ -1,30 +1,62 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AlertTriangle, CheckCircle2, FileText, Package } from "lucide-react";
 
+import { OrderForm } from "@/components/site/OrderForm";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { products } from "@/lib/mock-data";
+import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 
-export function generateStaticParams() {
-  return products.map((product) => ({ slug: product.slug }));
-}
+export const dynamic = "force-dynamic";
 
-export default function ProductDetailPage({
+export default async function ProductDetailPage({
   params,
 }: {
   params: { slug: string };
 }) {
-  const product = products.find((item) => item.slug === params.slug);
+  const product = await prisma.product.findFirst({
+    where: {
+      slug: params.slug,
+      status: "active",
+    },
+    include: {
+      category: true,
+      variants: {
+        where: { status: "active" },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      },
+      inventoryItems: {
+        where: { status: "available" },
+        select: { id: true, variantId: true },
+      },
+    },
+  });
 
   if (!product) {
     notFound();
   }
+
+  const variants = product.variants.map((variant) => ({
+    id: variant.id,
+    name: variant.name,
+    sku: variant.sku,
+    price: Number(variant.price),
+    availableStock: product.inventoryItems.filter(
+      (item) => item.variantId === variant.id,
+    ).length,
+  }));
+  const minPrice =
+    variants.length > 0
+      ? Math.min(...variants.map((variant) => variant.price))
+      : 0;
+  const totalStock = variants.reduce(
+    (sum, variant) => sum + variant.availableStock,
+    0,
+  );
+  const noticeItems = product.notice
+    ? product.notice.split(/\r?\n/).filter(Boolean)
+    : ["请在购买前确认用途合规。", "付款后请联系客服提供订单号。"];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -42,9 +74,9 @@ export default function ProductDetailPage({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm leading-7 text-slate-600">
-                <p>{product.description}</p>
+                <p>{product.description || product.summary || "暂无商品说明。"}</p>
                 <p>
-                  本阶段页面仅展示静态购买流程。点击立即购买会进入支付成功/发货结果演示页，不会发起真实支付，也不会写入数据库。
+                  本阶段下单后会创建待人工确认付款订单，并跳转到人工支付说明页，不会接入真实支付，也不会自动发货。
                 </p>
               </CardContent>
             </Card>
@@ -58,9 +90,12 @@ export default function ProductDetailPage({
               </CardHeader>
               <CardContent>
                 <ul className="grid gap-3 text-sm text-slate-600">
-                  {product.notice.map((item) => (
+                  {noticeItems.map((item) => (
                     <li key={item} className="flex gap-2">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+                      <CheckCircle2
+                        className="mt-0.5 h-4 w-4 shrink-0 text-success"
+                        aria-hidden="true"
+                      />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -79,12 +114,14 @@ export default function ProductDetailPage({
                 <div>
                   <p className="font-medium text-primary">发货格式</p>
                   <p className="mt-2 rounded-md bg-slate-50 p-3 font-mono text-xs text-slate-700">
-                    {product.deliveryFormat}
+                    {product.deliveryFormat || "账号----密码----备注"}
                   </p>
                 </div>
                 <div>
                   <p className="font-medium text-primary">售后说明</p>
-                  <p className="mt-2 leading-6">{product.afterSales}</p>
+                  <p className="mt-2 leading-6">
+                    {product.afterSales || "如有问题，请提供订单号联系客服核验。"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -95,7 +132,7 @@ export default function ProductDetailPage({
           <Card>
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="deal">{product.category}</Badge>
+                <Badge variant="deal">{product.category.name}</Badge>
                 <Badge variant="outline">发货类型：文本</Badge>
               </div>
               <CardTitle className="text-2xl leading-8">{product.title}</CardTitle>
@@ -103,47 +140,31 @@ export default function ProductDetailPage({
             <CardContent className="space-y-5">
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-sm text-slate-500">单价</p>
-                  <p className="text-3xl font-bold text-primary">{formatCurrency(product.price)}</p>
+                  <p className="text-sm text-slate-500">价格起</p>
+                  <p className="text-3xl font-bold text-primary">
+                    {formatCurrency(minPrice)}
+                  </p>
                 </div>
-                <p className="text-sm text-slate-500">库存 {product.stock}</p>
+                <p className="text-sm text-slate-500">库存 {totalStock}</p>
               </div>
 
               <Separator />
 
-              <div className="space-y-2">
-                <Label htmlFor="spec">规格选择</Label>
-                <select
-                  id="spec"
-                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
-                  defaultValue={product.specs[0]}
-                >
-                  {product.specs.map((spec) => (
-                    <option key={spec}>{spec}</option>
-                  ))}
-                </select>
+              <div className="grid gap-2 rounded-md bg-slate-50 p-4 text-xs text-slate-600">
+                {variants.map((variant) => (
+                  <div
+                    key={variant.id}
+                    className="flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <span className="font-medium text-primary">{variant.name}</span>
+                    <span>{formatCurrency(variant.price)}</span>
+                    <span>库存 {variant.availableStock}</span>
+                    <span className="font-mono">{variant.sku}</span>
+                  </div>
+                ))}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="quantity">数量选择</Label>
-                <Input id="quantity" type="number" min={1} defaultValue={1} />
-              </div>
-
-              <div className="rounded-md bg-slate-50 p-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-500">价格合计</span>
-                  <span className="text-xl font-semibold text-primary">
-                    {formatCurrency(product.price)}
-                  </span>
-                </div>
-              </div>
-
-              <Button variant="deal" size="lg" className="w-full" asChild>
-                <Link href="/order/success">立即购买</Link>
-              </Button>
-              <p className="text-xs leading-5 text-slate-500">
-                演示阶段不会创建真实订单，也不会进入真实支付通道。
-              </p>
+              <OrderForm productId={product.id} variants={variants} />
             </CardContent>
           </Card>
         </aside>
