@@ -1,0 +1,15 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Phase 1 placeholder only, so Prisma Client can be generated.
+// TODO: Phase 2 will replace this with Product, InventoryItem, Order, Article and admin settings models.
+model PhaseOnePlaceholder {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+}
