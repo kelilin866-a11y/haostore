@@ -28,6 +28,14 @@ const paymentMethods = [
   { value: "gateway_reserved", label: "支付网关预留" },
 ];
 
+const invalidContactMessage =
+  "请输入有效联系方式，例如邮箱、Telegram、手机号或微信号";
+
+function isValidContact(value: string) {
+  const contact = value.trim();
+  return contact.length >= 5;
+}
+
 export function OrderForm({ productId, variants }: OrderFormProps) {
   const router = useRouter();
   const [variantId, setVariantId] = useState(variants[0]?.id ?? "");
@@ -45,6 +53,12 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+
+    if (!isValidContact(contact)) {
+      setMessage(invalidContactMessage);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {

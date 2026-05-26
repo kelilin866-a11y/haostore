@@ -17,6 +17,8 @@ const allowedPaymentMethods = new Set<string>([
   PaymentMethod.manual_usdt,
   PaymentMethod.gateway_reserved,
 ]);
+const invalidContactMessage =
+  "请输入有效联系方式，例如邮箱、Telegram、手机号或微信号";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, message }, { status });
@@ -33,6 +35,10 @@ function detectContactType(contact: string) {
     return "phone";
   }
   return "other";
+}
+
+function isValidContact(contact: string) {
+  return contact.trim().length >= 5;
 }
 
 function createOrderNo() {
@@ -91,8 +97,8 @@ export async function POST(request: NextRequest) {
   if (!Number.isInteger(quantity) || quantity <= 0) {
     return jsonError("购买数量必须是正整数");
   }
-  if (!contact) {
-    return jsonError("联系方式不能为空");
+  if (!isValidContact(contact)) {
+    return jsonError(invalidContactMessage);
   }
   if (!allowedPaymentMethods.has(paymentMethod)) {
     return jsonError("支付方式无效");
