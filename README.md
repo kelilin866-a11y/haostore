@@ -1,6 +1,8 @@
 # 虚拟商品自动发货商城
 
-一个“虚拟商品自动发货商城”的第一阶段基础项目。当前版本聚焦项目初始化和前台页面骨架，使用 mock 数据展示账号类、卡密类和教程类文本商品的浏览、详情、订单查询、发货结果和 SEO 文章页面。
+一个“虚拟商品自动发货商城”的基础项目。当前已经完成第一阶段前台页面骨架，并进入第二阶段数据库模型与 seed 数据准备。
+
+项目目标是建设一个无登录、无购物车的虚拟商品商城，销售账号类、卡密类和教程类文本商品。第一版支付采用后台人工确认，后续阶段管理员确认付款后，系统再从文本库存中分配发货内容。
 
 ## 技术栈
 
@@ -34,7 +36,7 @@ npm run dev
 
 ## 环境变量
 
-复制 `.env.example` 为 `.env` 后按需填写：
+复制 `.env.example` 为 `.env` 后填写：
 
 ```env
 DATABASE_URL=
@@ -44,29 +46,82 @@ AI_PROVIDER=
 AI_API_KEY=
 NEXT_PUBLIC_SITE_URL=
 NEXT_PUBLIC_SITE_NAME=
+MANUAL_PAYMENT_NOTICE=
+CUSTOMER_SERVICE_TELEGRAM=
+CUSTOMER_SERVICE_EMAIL=
 ```
 
-第一阶段只预留 Prisma + PostgreSQL 配置，不要求连接真实数据库。
+PostgreSQL 示例：
+
+```env
+DATABASE_URL="postgresql://postgres:password@localhost:5432/virtual_goods_shop?schema=public"
+```
+
+## Prisma 命令
+
+生成 Prisma Client：
+
+```bash
+npm run prisma:generate
+```
+
+校验 schema：
+
+```bash
+npx prisma validate
+```
+
+运行 migration：
+
+```bash
+npm run prisma:migrate
+```
+
+写入 seed 数据：
+
+```bash
+npm run prisma:seed
+```
+
+Seed 仅用于本地开发和测试环境，会清空并重建分类、商品、规格、库存、文章和设置等基础数据。不要在生产数据库执行 seed；脚本在 `NODE_ENV=production` 时会拒绝运行。
+
+重置数据库：
+
+```bash
+npm run db:reset
+```
+
+如果本地暂时没有真实 PostgreSQL 数据库，可以先只运行 `npx prisma validate` 和 `npm run prisma:generate`。
 
 ## 当前阶段完成内容
+
+第一阶段已完成：
 
 - 创建 Next.js + TypeScript 项目结构。
 - 集成 Tailwind CSS。
 - 添加 shadcn/ui 风格基础组件。
-- 预留 Prisma PostgreSQL datasource 和 Prisma Client generator。
 - 创建首页、产品中心、商品详情、订单查询、订单成功、文章列表、文章详情、客服、服务条款、售后政策和后台占位页面。
 - 创建 `/api/health` 健康检查接口。
-- 使用 `lib/mock-data.ts` 提供 categories、products、articles 和 mockOrder。
-- UI 采用深蓝、青绿色、辅助蓝和浅灰白风格。
+- 使用 `lib/mock-data.ts` 提供前台 mock 数据。
 
-## 下一阶段开发计划
+第二阶段已完成：
 
-下一阶段建议进入“阶段 2：数据库模型 + seed 数据”，设计商品、库存、订单、文章和站点设置模型，并建立 Prisma migration 与 seed 脚本。
+- 更新 Prisma schema，添加商品、规格、库存、订单、支付记录、发货记录、文章和站点设置模型。
+- 添加 ProductStatus、VariantStatus、InventoryStatus、PaymentStatus、DeliveryStatus、OrderStatus、ArticleStatus、PaymentMethod 枚举。
+- 添加 slug、sku、orderNo、setting key 等唯一约束。
+- 添加库存和订单状态相关索引。
+- 创建 `prisma/seed.ts`，提供分类、商品、规格、库存、文章分类、文章和 Setting seed 数据。
+- 创建 `lib/db.ts`，在 Next.js dev 环境中复用 PrismaClient。
 
 ## 当前阶段限制
 
 - 不接入真实支付。
 - 不实现用户注册。
 - 不实现购物车。
-- 不实现复杂后台业务。
-- 不写入真实订单或库存。
+- 不实现自动发货 API。
+- 不实现订单查询 API。
+- 不实现完整后台业务。
+
+## 下一阶段开发计划
+
+下一阶段建议进入“阶段 3：商品读取 + 下单流程”，把前台商品列表和商品详情从 mock 数据切换为数据库读取，并实现基础下单记录创建。第三阶段仍不接真实支付。

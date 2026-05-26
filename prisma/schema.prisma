@@ -7,9 +7,265 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Phase 1 placeholder only, so Prisma Client can be generated.
-// TODO: Phase 2 will replace this with Product, InventoryItem, Order, Article and admin settings models.
-model PhaseOnePlaceholder {
+enum ProductStatus {
+  draft
+  active
+  inactive
+}
+
+enum VariantStatus {
+  active
+  inactive
+}
+
+enum InventoryStatus {
+  available
+  reserved
+  sold
+  invalid
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum DeliveryStatus {
+  pending
+  delivered
+  failed
+  manual_review
+}
+
+enum OrderStatus {
+  pending_payment
+  paid
+  completed
+  cancelled
+  manual_review
+}
+
+enum ArticleStatus {
+  draft
+  published
+  archived
+}
+
+enum PaymentMethod {
+  manual_alipay
+  manual_wechat
+  manual_usdt
+  gateway_reserved
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
+model Product {
+  id             String           @id @default(cuid())
+  categoryId     String
+  title          String
+  slug           String           @unique
+  summary        String?
+  description    String?
+  coverImage     String?
+  status         ProductStatus    @default(draft)
+  seoTitle       String?
+  seoDescription String?
+  seoKeywords    String?
+  notice         String?
+  deliveryFormat String?
+  afterSales     String?
+  sortOrder      Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  category       Category         @relation(fields: [categoryId], references: [id])
+  variants       ProductVariant[]
+  inventoryItems InventoryItem[]
+  orderItems     OrderItem[]
+
+  @@index([categoryId])
+  @@index([status])
+}
+
+model ProductVariant {
+  id             String          @id @default(cuid())
+  productId      String
+  name           String
+  sku            String          @unique
+  price          Decimal         @db.Decimal(10, 2)
+  stockDisplay   Int             @default(0)
+  status         VariantStatus   @default(active)
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  product        Product         @relation(fields: [productId], references: [id])
+  inventoryItems InventoryItem[]
+  orderItems     OrderItem[]
+
+  @@index([productId])
+  @@index([status])
+}
+
+model InventoryItem {
+  id           String          @id @default(cuid())
+  productId    String
+  variantId    String
+  content      String
+  status       InventoryStatus @default(available)
+  orderId      String?
+  soldAt       DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  product      Product         @relation(fields: [productId], references: [id])
+  variant      ProductVariant  @relation(fields: [variantId], references: [id])
+  order        Order?          @relation(fields: [orderId], references: [id])
+  deliveryItem DeliveryItem?
+
+  @@index([status, productId, variantId])
+  @@index([orderId])
+}
+
+model Order {
+  id             String          @id @default(cuid())
+  orderNo        String          @unique
+  contact        String
+  contactType    String
+  totalAmount    Decimal         @db.Decimal(10, 2)
+  paymentStatus  PaymentStatus   @default(pending)
+  deliveryStatus DeliveryStatus  @default(pending)
+  orderStatus    OrderStatus     @default(pending_payment)
+  paymentMethod  PaymentMethod   @default(gateway_reserved)
+  customerIp     String?
+  userAgent      String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  paidAt         DateTime?
+  deliveredAt    DateTime?
+  items          OrderItem[]
+  deliveryItems  DeliveryItem[]
+  paymentRecords PaymentRecord[]
+  inventoryItems InventoryItem[]
+
+  @@index([contact])
+  @@index([orderNo])
+  @@index([paymentStatus])
+  @@index([deliveryStatus])
+  @@index([orderStatus])
+}
+
+model OrderItem {
+  id                   String         @id @default(cuid())
+  orderId              String
+  productId            String
+  variantId            String
+  productTitleSnapshot String
+  variantNameSnapshot  String
+  unitPriceSnapshot    Decimal        @db.Decimal(10, 2)
+  quantity             Int
+  subtotal             Decimal        @db.Decimal(10, 2)
+  createdAt            DateTime       @default(now())
+  order                Order          @relation(fields: [orderId], references: [id])
+  product              Product        @relation(fields: [productId], references: [id])
+  variant              ProductVariant @relation(fields: [variantId], references: [id])
+  deliveryItems        DeliveryItem[]
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([variantId])
+}
+
+model DeliveryItem {
+  id              String         @id @default(cuid())
+  orderId         String
+  orderItemId     String
+  inventoryItemId String?        @unique
+  content         String
+  createdAt       DateTime       @default(now())
+  order           Order          @relation(fields: [orderId], references: [id])
+  orderItem       OrderItem      @relation(fields: [orderItemId], references: [id])
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([orderId])
+  @@index([orderItemId])
+}
+
+model PaymentRecord {
+  id            String        @id @default(cuid())
+  orderId       String
+  method        PaymentMethod
+  amount        Decimal       @db.Decimal(10, 2)
+  status        PaymentStatus @default(pending)
+  transactionId String?
+  note          String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  order         Order         @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model ArticleCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  articles    Article[]
+}
+
+model Article {
+  id                String          @id @default(cuid())
+  categoryId        String
+  title             String
+  slug              String          @unique
+  summary           String?
+  content           String
+  coverImage        String?
+  status            ArticleStatus   @default(draft)
+  seoTitle          String?
+  seoDescription    String?
+  seoKeywords       String?
+  canonical         String?
+  faqJson           Json?
+  relatedProductIds String[]        @default([])
+  publishedAt       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  category          ArticleCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+  @@index([status])
+}
+
+model Setting {
   id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

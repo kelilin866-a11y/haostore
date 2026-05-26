@@ -1,5 +1,18 @@
 # 分阶段开发计划
 
+## 当前阶段：阶段 2 数据库模型 + seed 数据
+
+本阶段只做 Prisma 数据模型、seed 数据、基础数据库客户端和数据库脚本配置。
+
+本阶段明确不做：
+
+- 不实现真实支付。
+- 不实现用户注册。
+- 不实现完整后台业务。
+- 不实现自动发货 API。
+- 不实现订单查询 API。
+- 不修改第一阶段页面设计风格。
+
 ## 阶段 1：项目初始化 + 前台基础页面
 
 - 初始化 Next.js + TypeScript + App Router。
@@ -8,11 +21,17 @@
 - 创建首页、产品中心、商品详情、订单查询、订单成功、文章、客服、政策和后台占位页面。
 - 使用 mock 数据展示商品、文章和订单。
 
+状态：已完成。
+
 ## 阶段 2：数据库模型 + seed 数据
 
-- 设计 Product、InventoryItem、Order、Article、SiteSetting 等模型。
-- 建立 Prisma migration。
-- 编写 seed 数据脚本。
+- 设计 AdminUser、Category、Product、ProductVariant、InventoryItem、Order、OrderItem、DeliveryItem、PaymentRecord、ArticleCategory、Article、Setting 模型。
+- 添加商品、库存、订单、支付、发货、文章状态枚举。
+- 配置 Prisma Client、PostgreSQL datasource、索引和唯一约束。
+- 创建基础 seed 数据：分类、商品、规格、文本库存、文章分类、文章和站点设置。
+- 添加 `lib/db.ts` 作为 Prisma Client 单例入口。
+
+状态：当前阶段。
 
 ## 阶段 3：商品读取 + 下单流程
 
