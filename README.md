@@ -1,6 +1,6 @@
 # 虚拟商品自动发货商城
 
-一个“虚拟商品自动发货商城”的基础项目。当前已经完成第一阶段前台页面骨架，并进入第二阶段数据库模型与 seed 数据准备。
+一个“虚拟商品自动发货商城”的基础项目。当前已经完成前台页面骨架、数据库模型、商品数据库读取、下单流程、后台人工确认付款、自动发货和订单查询闭环。
 
 项目目标是建设一个无登录、无购物车的虚拟商品商城，销售账号类、卡密类和教程类文本商品。第一版支付采用后台人工确认，后续阶段管理员确认付款后，系统再从文本库存中分配发货内容。
 
@@ -35,6 +35,7 @@ npm run dev
 - 文章详情：http://localhost:3000/blog/how-to-login-telegram-account
 - 联系客服：http://localhost:3000/contact
 - 后台占位：http://localhost:3000/admin
+- 后台订单：http://localhost:3000/admin/orders?token=change-me
 - 健康检查：http://localhost:3000/api/health
 
 ## 环境变量
@@ -45,6 +46,7 @@ npm run dev
 DATABASE_URL=
 ADMIN_EMAIL=
 ADMIN_PASSWORD_HASH=
+ADMIN_TOKEN="change-me"
 AI_PROVIDER=
 AI_API_KEY=
 NEXT_PUBLIC_SITE_URL=
@@ -125,6 +127,15 @@ npm run db:reset
 - 新增 `/order/[orderNo]/pay` 人工支付说明页，展示订单信息、付款说明和客服联系方式。
 - 第三阶段订单不会扣减库存，不会创建发货内容，不会自动发货。
 
+第四阶段已完成：
+
+- `/order/query` 支持使用订单号和联系方式查询真实订单。
+- 新增 `POST /api/orders/query`，未发货订单不返回发货内容，已发货订单返回发货内容。
+- 新增 `/admin/orders?token=change-me` 简单后台订单页，使用 `ADMIN_TOKEN` 做基础保护。
+- 新增 `POST /api/admin/orders/confirm`，管理员人工确认付款后，在事务中扣减库存、创建发货记录并完成订单。
+- `/order/[orderNo]/pay` 在订单已发货后展示发货内容，未发货时仍只展示人工付款说明。
+- 本阶段仍不接入真实支付，不做用户注册，不做复杂后台权限系统。
+
 ## 当前阶段限制
 
 - 不接入真实支付。
@@ -133,8 +144,9 @@ npm run db:reset
 - 不实现自动发货 API。
 - 不实现订单查询 API。
 - 不实现完整后台业务。
-- 不实现后台人工确认付款。
+- 不接入真实支付网关。
+- 不做用户注册或复杂后台权限系统。
 
 ## 下一阶段开发计划
 
-下一阶段建议进入“阶段 4：后台人工确认付款 + 自动发货”，实现后台订单查看、管理员人工确认付款、库存分配和发货内容生成。第四阶段开始前仍不要接入真实支付网关。
+下一阶段建议做部署前安全加固、后台权限细化、错误处理和操作审计。正式支付网关仍应单独评估后再接入。

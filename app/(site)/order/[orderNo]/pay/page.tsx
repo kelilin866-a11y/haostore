@@ -1,11 +1,12 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, CreditCard, Headphones } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CreditCard, Headphones } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { prisma } from "@/lib/db";
 import { siteConfig } from "@/lib/constants";
+import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +56,9 @@ export default async function ManualPayPage({
         items: {
           orderBy: { createdAt: "asc" },
         },
+        deliveryItems: {
+          orderBy: { createdAt: "asc" },
+        },
       },
     }),
     getSettings(),
@@ -64,13 +68,21 @@ export default async function ManualPayPage({
     notFound();
   }
 
+  const isDelivered = order.deliveryStatus === "delivered";
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="mb-8">
-        <p className="text-sm font-semibold text-accentblue">人工支付说明</p>
-        <h1 className="mt-2 text-3xl font-bold text-primary">订单待人工确认</h1>
+        <p className="text-sm font-semibold text-accentblue">
+          {isDelivered ? "发货结果" : "人工支付说明"}
+        </p>
+        <h1 className="mt-2 text-3xl font-bold text-primary">
+          {isDelivered ? "订单已发货" : "订单待人工确认"}
+        </h1>
         <p className="mt-3 text-sm leading-6 text-slate-500">
-          当前为人工确认支付，付款后请联系客服提供订单号。管理员确认后才会发货。
+          {isDelivered
+            ? "管理员已确认付款并完成发货，请及时保存发货内容。"
+            : "当前为人工确认支付，付款后请联系客服提供订单号。管理员确认后才会发货。"}
         </p>
       </div>
 
@@ -95,10 +107,16 @@ export default async function ManualPayPage({
                 </span>
               </p>
               <p>
-                支付状态：<Badge variant="warning">{order.paymentStatus}</Badge>
+                支付状态：
+                <Badge variant={order.paymentStatus === "paid" ? "success" : "warning"}>
+                  {order.paymentStatus}
+                </Badge>
               </p>
               <p>
-                发货状态：<Badge variant="outline">{order.deliveryStatus}</Badge>
+                发货状态：
+                <Badge variant={isDelivered ? "success" : "outline"}>
+                  {order.deliveryStatus}
+                </Badge>
               </p>
               <p>
                 联系方式：
@@ -133,20 +151,43 @@ export default async function ManualPayPage({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-warning" aria-hidden="true" />
-              付款说明
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm leading-7 text-slate-600">
-            <p>{settings.paymentNotice}</p>
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
-              当前订单不会自动发货，不展示任何发货内容。请付款后联系客服提供订单号，等待管理员人工确认。
-            </div>
-          </CardContent>
-        </Card>
+        {isDelivered ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-success" aria-hidden="true" />
+                发货内容
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2 rounded-md border border-slate-200 bg-white p-4 font-mono text-xs text-slate-700">
+                {order.deliveryItems.map((item) => (
+                  <p key={item.id} className="break-all">
+                    {item.content}
+                  </p>
+                ))}
+              </div>
+              <p className="text-sm text-slate-500">
+                请及时保存发货内容。售后请提供订单号和下单联系方式。
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-warning" aria-hidden="true" />
+                付款说明
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm leading-7 text-slate-600">
+              <p>{settings.paymentNotice}</p>
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
+                当前订单不会自动发货，不展示任何发货内容。请付款后联系客服提供订单号，等待管理员人工确认。
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -159,7 +200,7 @@ export default async function ManualPayPage({
             <p>Telegram：{settings.customerTelegram}</p>
             <p>邮箱：{settings.customerEmail}</p>
             <Button variant="outline" className="mt-3 w-fit" asChild>
-              <a href="/contact">联系客服</a>
+              <Link href="/contact">联系客服</Link>
             </Button>
           </CardContent>
         </Card>

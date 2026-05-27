@@ -1,0 +1,182 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { formatCurrency } from "@/lib/utils";
+
+type QueryResult = {
+  orderNo: string;
+  contact: string;
+  totalAmount: number;
+  paymentStatus: string;
+  deliveryStatus: string;
+  orderStatus: string;
+  paymentMethod: string;
+  items: {
+    id: string;
+    productName: string;
+    variantName: string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+  }[];
+  deliveryItems: {
+    id: string;
+    content: string;
+  }[];
+};
+
+export function OrderQueryForm() {
+  const [orderNo, setOrderNo] = useState("");
+  const [contact, setContact] = useState("");
+  const [message, setMessage] = useState("");
+  const [order, setOrder] = useState<QueryResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    setOrder(null);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/orders/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNo, contact }),
+      });
+      const result = (await response.json()) as {
+        ok: boolean;
+        message?: string;
+        order?: QueryResult;
+      };
+
+      if (!result.ok || !result.order) {
+        setMessage(result.message || "查询失败，请检查订单信息");
+        return;
+      }
+
+      setOrder(result.order);
+    } catch {
+      setMessage("查询失败，请稍后重试");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <div className="grid gap-6">
+      <Card>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="grid gap-4 p-5 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <div className="space-y-2">
+              <Label htmlFor="orderNo">订单号</Label>
+              <Input
+                id="orderNo"
+                value={orderNo}
+                onChange={(event) => setOrderNo(event.target.value)}
+                placeholder="例如 HM202605240018"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact">联系方式</Label>
+              <Input
+                id="contact"
+                value={contact}
+                onChange={(event) => setContact(event.target.value)}
+                placeholder="下单时填写的联系方式"
+              />
+            </div>
+            <Button variant="deal" type="submit" disabled={isLoading}>
+              {isLoading ? "查询中" : "查询"}
+            </Button>
+          </CardContent>
+        </form>
+      </Card>
+
+      {message ? (
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {message}
+        </div>
+      ) : null}
+
+      {order ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>订单结果</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 text-sm">
+            <div className="grid gap-3 rounded-md bg-slate-50 p-4 sm:grid-cols-2">
+              <p>
+                订单号：
+                <span className="font-medium text-primary">{order.orderNo}</span>
+              </p>
+              <p>
+                总金额：
+                <span className="font-medium text-primary">
+                  {formatCurrency(order.totalAmount)}
+                </span>
+              </p>
+              <p>
+                支付状态：<Badge variant="warning">{order.paymentStatus}</Badge>
+              </p>
+              <p>
+                发货状态：
+                <Badge variant={order.deliveryStatus === "delivered" ? "success" : "outline"}>
+                  {order.deliveryStatus}
+                </Badge>
+              </p>
+              <p>
+                联系方式：
+                <span className="font-medium text-primary">{order.contact}</span>
+              </p>
+              <p>
+                订单状态：
+                <span className="font-medium text-primary">{order.orderStatus}</span>
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-2 font-medium text-primary">商品明细</p>
+              <div className="grid gap-2 rounded-md border border-slate-200 bg-white p-4">
+                {order.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="grid gap-2 sm:grid-cols-[1fr_120px_80px_120px]"
+                  >
+                    <span className="font-medium text-primary">{item.productName}</span>
+                    <span>{item.variantName}</span>
+                    <span>数量 {item.quantity}</span>
+                    <span>{formatCurrency(item.subtotal)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {order.deliveryStatus === "delivered" ? (
+              <div>
+                <p className="mb-2 font-medium text-primary">发货内容</p>
+                <div className="grid gap-2 rounded-md border border-slate-200 bg-white p-4 font-mono text-xs text-slate-700">
+                  {order.deliveryItems.map((item) => (
+                    <p key={item.id} className="break-all">
+                      {item.content}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                当前订单待人工确认付款。付款后请联系客服提供订单号，管理员确认后才会发货。
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+    </div>
+  );
+}
