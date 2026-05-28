@@ -216,3 +216,63 @@ http://localhost:3000/api/payments/stripe/webhook
 ## 下一阶段开发计划
 
 下一阶段建议做支付异常处理、退款/人工复核流程、后台审计日志和部署前安全加固。
+
+## 部署前检查
+
+上线前请确认：
+
+- `DATABASE_URL` 指向生产 PostgreSQL 数据库。
+- `NEXT_PUBLIC_SITE_URL` 是完整生产域名，例如 `https://example.com`，Stripe Checkout 的返回地址会使用它。
+- `PAYMENT_PROVIDER=stripe`、`PAYMENT_CURRENCY=cny`、`NEXT_PUBLIC_PAYMENT_GATEWAY_NAME="Stripe Checkout"` 已配置。
+- `STRIPE_SECRET_KEY` 使用当前环境对应的 Stripe secret key。
+- `STRIPE_WEBHOOK_SECRET` 使用 Stripe Dashboard 中 webhook endpoint 的签名密钥，不要把本地 Stripe CLI 的 secret 用到生产环境。
+- `ADMIN_USERNAME`、`ADMIN_PASSWORD`、`ADMIN_SESSION_SECRET` 已替换为生产强凭据。
+- 所有真实密钥只能配置在部署平台环境变量中，不要提交到 Git。
+
+推荐服务器部署命令：
+
+```bash
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run build
+npm run start
+```
+
+Vercel / Railway 等平台通常使用构建命令：
+
+```bash
+npm run build
+```
+
+上线前需要先对生产数据库执行迁移：
+
+```bash
+npm run prisma:migrate
+```
+
+Stripe webhook 配置步骤：
+
+1. 在 Stripe Dashboard 创建 webhook endpoint：
+   `https://your-domain.com/api/payments/stripe/webhook`
+2. 至少订阅这些事件：
+   `checkout.session.completed`、
+   `checkout.session.async_payment_succeeded`、
+   `checkout.session.async_payment_failed`、
+   `checkout.session.expired`、
+   `payment_intent.succeeded`
+3. 将 endpoint signing secret 配置到 `STRIPE_WEBHOOK_SECRET`。
+4. 完成一笔 Stripe 测试支付，确认订单变为 `paymentStatus=paid`，且 `deliveryStatus` 仍为 `pending`。
+
+支付与发货边界：
+
+- Stripe webhook 只确认付款状态并写入 `PaymentRecord`。
+- Stripe webhook 不扣库存、不创建 `DeliveryItem`、不把订单改为 completed。
+- 只有管理员登录后台并在 `/admin/orders` 确认发货后，才会扣库存、创建发货内容并完成订单。
+- 订单查询页只在 `deliveryStatus=delivered` 后展示发货内容。
+
+生产数据安全：
+
+- 不要在生产数据库执行 `npm run prisma:seed`。seed 脚本会清空并重建演示分类、商品、库存、文章、订单、支付记录和设置。
+- 不要在生产数据库执行 `npm run db:reset`。它会重置数据库。
+- `prisma/seed.ts` 和 `lib/mock-data.ts` 中的示例库存、示例账号、示例文章只用于本地开发测试，不能作为生产真实库存。
