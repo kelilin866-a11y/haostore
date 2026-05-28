@@ -25,7 +25,10 @@ const paymentMethods = [
   { value: "manual_alipay", label: "人工支付宝" },
   { value: "manual_wechat", label: "人工微信" },
   { value: "manual_usdt", label: "人工 USDT" },
-  { value: "gateway_reserved", label: "支付网关预留" },
+  {
+    value: "gateway_reserved",
+    label: `${process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_NAME || "在线支付"}（真实支付）`,
+  },
 ];
 
 const invalidContactMessage =
@@ -139,7 +142,7 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
           id="contact"
           value={contact}
           onChange={(event) => setContact(event.target.value)}
-          placeholder="邮箱、Telegram 或手机号"
+          placeholder="邮箱、Telegram、手机号或微信号"
         />
       </div>
 
@@ -179,12 +182,14 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
         variant="deal"
         size="lg"
         className="w-full"
-        disabled={isSubmitting || !selectedVariant || selectedVariant.availableStock < quantity}
+        disabled={
+          isSubmitting || !selectedVariant || selectedVariant.availableStock < quantity
+        }
       >
         {isSubmitting ? "正在创建订单" : "立即购买"}
       </Button>
       <p className="text-xs leading-5 text-slate-500">
-        本阶段只创建待人工确认付款订单，不扣减库存、不自动发货、不接入真实支付。
+        人工付款会进入后台确认流程；在线支付成功后会通过支付回调确认订单并发货。
       </p>
     </form>
   );

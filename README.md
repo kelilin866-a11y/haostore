@@ -54,6 +54,11 @@ NEXT_PUBLIC_SITE_NAME=
 MANUAL_PAYMENT_NOTICE=
 CUSTOMER_SERVICE_TELEGRAM=
 CUSTOMER_SERVICE_EMAIL=
+PAYMENT_PROVIDER=stripe
+PAYMENT_CURRENCY=cny
+NEXT_PUBLIC_PAYMENT_GATEWAY_NAME="Stripe Checkout"
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 ```
 
 PostgreSQL 示例：
@@ -136,17 +141,44 @@ npm run db:reset
 - `/order/[orderNo]/pay` 在订单已发货后展示发货内容，未发货时仍只展示人工付款说明。
 - 本阶段仍不接入真实支付，不做用户注册，不做复杂后台权限系统。
 
+第五阶段已完成：
+
+- 新增 Stripe Checkout 在线支付入口，使用现有 `gateway_reserved` 支付方式。
+- 新增 `POST /api/payments/checkout`，为在线支付订单创建 Checkout Session。
+- 新增 `POST /api/payments/stripe/webhook`，校验 Stripe webhook 签名后处理支付成功事件。
+- 支付成功后只通过 webhook 将订单支付状态更新为 `paid`，不自动扣减库存、不自动创建 DeliveryItem。
+- 发货仍保留第四阶段后台人工确认流程，由管理员确认后再扣减库存并分配发货内容。
+- 人工付款、后台 `ADMIN_TOKEN` 确认付款、订单查询和发货内容展示逻辑保持可用。
+
+### Stripe 支付配置
+
+`.env` 中配置：
+
+```env
+PAYMENT_PROVIDER=stripe
+PAYMENT_CURRENCY=cny
+NEXT_PUBLIC_PAYMENT_GATEWAY_NAME="Stripe Checkout"
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+本地调试 webhook 时，需要把 Stripe 事件转发到：
+
+```bash
+http://localhost:3000/api/payments/stripe/webhook
+```
+
+未配置 `STRIPE_SECRET_KEY` 或 `STRIPE_WEBHOOK_SECRET` 时，人工付款流程仍然可用，在线支付按钮会提示支付网关未配置。
+
 ## 当前阶段限制
 
-- 不接入真实支付。
 - 不实现用户注册。
 - 不实现购物车。
-- 不实现自动发货 API。
-- 不实现订单查询 API。
 - 不实现完整后台业务。
-- 不接入真实支付网关。
+- 不新增登录、会员、批发价、阶梯价。
 - 不做用户注册或复杂后台权限系统。
 
 ## 下一阶段开发计划
 
-下一阶段建议做部署前安全加固、后台权限细化、错误处理和操作审计。正式支付网关仍应单独评估后再接入。
+下一阶段建议做支付异常处理、退款/人工复核流程、后台审计日志和部署前安全加固。

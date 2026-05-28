@@ -1,12 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, CheckCircle2, CreditCard, Headphones } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CreditCard,
+  Headphones,
+} from "lucide-react";
 
+import { PaymentCheckoutButton } from "@/components/site/PaymentCheckoutButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { siteConfig } from "@/lib/constants";
 import { prisma } from "@/lib/db";
+import {
+  isStripePaymentEnabled,
+  paymentGatewayConfig,
+} from "@/lib/payment-gateway";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +25,7 @@ const paymentMethodLabels: Record<string, string> = {
   manual_alipay: "人工支付宝",
   manual_wechat: "人工微信",
   manual_usdt: "人工 USDT",
-  gateway_reserved: "支付网关预留",
+  gateway_reserved: paymentGatewayConfig.gatewayName,
 };
 
 async function getSettings() {
@@ -44,10 +54,12 @@ async function getSettings() {
   };
 }
 
-export default async function ManualPayPage({
+export default async function PayPage({
   params,
+  searchParams,
 }: {
   params: { orderNo: string };
+  searchParams?: { payment?: string };
 }) {
   const [order, settings] = await Promise.all([
     prisma.order.findUnique({
@@ -69,24 +81,45 @@ export default async function ManualPayPage({
   }
 
   const isDelivered = order.deliveryStatus === "delivered";
+  const isGatewayOrder = order.paymentMethod === "gateway_reserved";
+  const canUseOnlinePayment =
+    isGatewayOrder && !isDelivered && order.paymentStatus !== "paid";
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="mb-8">
         <p className="text-sm font-semibold text-accentblue">
-          {isDelivered ? "发货结果" : "人工支付说明"}
+          {isDelivered ? "发货结果" : "支付说明"}
         </p>
         <h1 className="mt-2 text-3xl font-bold text-primary">
-          {isDelivered ? "订单已发货" : "订单待人工确认"}
+          {isDelivered ? "订单已发货" : "订单待支付确认"}
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-500">
           {isDelivered
-            ? "管理员已确认付款并完成发货，请及时保存发货内容。"
-            : "当前为人工确认支付，付款后请联系客服提供订单号。管理员确认后才会发货。"}
+            ? "付款已确认并完成发货，请及时保存发货内容。"
+            : isGatewayOrder
+              ? "当前订单选择在线支付。支付成功后，系统会通过支付回调确认付款状态，发货仍由后台人工确认。"
+              : "当前为人工确认支付，付款后请联系客服提供订单号。管理员确认后才会发货。"}
         </p>
       </div>
 
       <div className="grid gap-5">
+        {searchParams?.payment === "success" && !isDelivered ? (
+          <Card className="border-teal-200 bg-teal-50">
+            <CardContent className="p-4 text-sm text-teal-800">
+              支付页面已返回。若支付状态暂未更新，请稍等支付回调处理后刷新页面，或通过订单查询查看最新状态。
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {searchParams?.payment === "cancelled" ? (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="p-4 text-sm text-amber-800">
+              你已取消在线支付，可以重新发起支付，或联系客服改用人工付款。
+            </CardContent>
+          </Card>
+        ) : null}
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -170,6 +203,31 @@ export default async function ManualPayPage({
               <p className="text-sm text-slate-500">
                 请及时保存发货内容。售后请提供订单号和下单联系方式。
               </p>
+            </CardContent>
+          </Card>
+        ) : canUseOnlinePayment ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-deal" aria-hidden="true" />
+                在线支付
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm leading-7 text-slate-600">
+              <p>
+                支付网关：{paymentGatewayConfig.gatewayName}。支付成功后，系统会通过
+                webhook 自动确认付款状态。发货仍由后台人工确认，确认前不会展示任何发货内容。
+              </p>
+              {isStripePaymentEnabled() ? (
+                <PaymentCheckoutButton orderNo={order.orderNo} />
+              ) : (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
+                  在线支付环境变量暂未配置，请先使用人工付款方式或联系客服。
+                </div>
+              )}
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-slate-600">
+                未完成后台发货确认前，页面不会展示任何发货内容。
+              </div>
             </CardContent>
           </Card>
         ) : (
