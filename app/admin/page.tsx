@@ -1,25 +1,49 @@
-import { Boxes, FileText, Newspaper, Settings, ShoppingBag, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import {
+  Boxes,
+  FileText,
+  Newspaper,
+  Settings,
+  ShoppingBag,
+  Sparkles,
+} from "lucide-react";
 
+import { AdminLogoutButton } from "@/components/site/AdminLogoutButton";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getAdminSession } from "@/lib/admin-auth";
 
 const modules = [
   { title: "商品管理", icon: ShoppingBag },
   { title: "库存管理", icon: Boxes },
-  { title: "订单管理", icon: FileText },
+  { title: "订单管理", icon: FileText, href: "/admin/orders" },
   { title: "文章管理", icon: Newspaper },
   { title: "AI 文章生成", icon: Sparkles },
   { title: "站点设置", icon: Settings },
 ];
 
+export const dynamic = "force-dynamic";
+
 export default function AdminPage() {
+  const session = getAdminSession();
+
+  if (!session) {
+    redirect("/admin/login?next=/admin");
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <div className="mb-8">
-        <p className="text-sm font-semibold text-accentblue">静态占位</p>
-        <h1 className="mt-2 text-3xl font-bold text-primary">后台管理</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-          第一阶段不实现登录、权限、真实商品管理、库存管理或订单业务，仅展示后台模块入口。
-        </p>
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-accentblue">后台管理</p>
+          <h1 className="mt-2 text-3xl font-bold text-primary">后台管理</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+            当前登录账号：{session.username}。本阶段只实现简单后台登录和
+            session 保护，不新增多角色、用户管理或会员体系。
+          </p>
+        </div>
+        <AdminLogoutButton />
       </div>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {modules.map((module) => {
@@ -30,9 +54,15 @@ export default function AdminPage() {
                 <div className="flex h-12 w-12 items-center justify-center rounded-md bg-teal-50 text-deal">
                   <Icon className="h-6 w-6" aria-hidden="true" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="font-semibold text-primary">{module.title}</h2>
-                  <p className="mt-1 text-sm text-slate-500">功能待后续阶段实现</p>
+                  {module.href ? (
+                    <Button variant="outline" size="sm" className="mt-2" asChild>
+                      <Link href={module.href}>进入</Link>
+                    </Button>
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-500">功能待后续阶段实现</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

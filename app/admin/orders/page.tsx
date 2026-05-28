@@ -1,37 +1,20 @@
+import { redirect } from "next/navigation";
+
 import { AdminConfirmButton } from "@/components/site/AdminConfirmButton";
+import { AdminLogoutButton } from "@/components/site/AdminLogoutButton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-type AdminOrdersPageProps = {
-  searchParams?: {
-    token?: string;
-  };
-};
+export default async function AdminOrdersPage() {
+  const session = getAdminSession();
 
-const adminToken = process.env.ADMIN_TOKEN || "change-me";
-
-export default async function AdminOrdersPage({
-  searchParams,
-}: AdminOrdersPageProps) {
-  const token = searchParams?.token || "";
-
-  if (token !== adminToken) {
-    return (
-      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>无权限</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm leading-6 text-slate-600">
-            请使用正确的后台访问 token，例如 `/admin/orders?token=change-me`。
-          </CardContent>
-        </Card>
-      </div>
-    );
+  if (!session) {
+    redirect("/admin/login?next=/admin/orders");
   }
 
   const orders = await prisma.order.findMany({
@@ -52,17 +35,24 @@ export default async function AdminOrdersPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="mb-8">
-        <p className="text-sm font-semibold text-accentblue">后台管理</p>
-        <h1 className="mt-2 text-3xl font-bold text-primary">待人工确认订单</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-500">
-          本页面只提供简单 token 保护，用于第四阶段人工确认付款和发货演示。
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-accentblue">后台管理</p>
+            <h1 className="mt-2 text-3xl font-bold text-primary">
+              待人工确认订单
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              当前登录账号：{session.username}。已支付但待发货的订单会保留在这里，由管理员人工确认后发货。
+            </p>
+          </div>
+          <AdminLogoutButton />
+        </div>
       </div>
 
       {orders.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-sm text-slate-500">
-            暂无待确认付款订单。
+            暂无待确认发货订单。
           </CardContent>
         </Card>
       ) : (
@@ -107,7 +97,7 @@ export default async function AdminOrdersPage({
                       {formatCurrency(Number(order.totalAmount))}
                     </span>
                   </p>
-                  <AdminConfirmButton orderNo={order.orderNo} token={token} />
+                  <AdminConfirmButton orderNo={order.orderNo} />
                 </div>
               </CardContent>
             </Card>

@@ -34,8 +34,9 @@ npm run dev
 - 文章列表：http://localhost:3000/blog
 - 文章详情：http://localhost:3000/blog/how-to-login-telegram-account
 - 联系客服：http://localhost:3000/contact
-- 后台占位：http://localhost:3000/admin
-- 后台订单：http://localhost:3000/admin/orders?token=change-me
+- 后台入口：http://localhost:3000/admin
+- 后台登录：http://localhost:3000/admin/login
+- 后台订单：http://localhost:3000/admin/orders
 - 健康检查：http://localhost:3000/api/health
 
 ## 环境变量
@@ -46,7 +47,9 @@ npm run dev
 DATABASE_URL=
 ADMIN_EMAIL=
 ADMIN_PASSWORD_HASH=
-ADMIN_TOKEN="change-me"
+ADMIN_USERNAME=
+ADMIN_PASSWORD=
+ADMIN_SESSION_SECRET=
 AI_PROVIDER=
 AI_API_KEY=
 NEXT_PUBLIC_SITE_URL=
@@ -136,7 +139,7 @@ npm run db:reset
 
 - `/order/query` 支持使用订单号和联系方式查询真实订单。
 - 新增 `POST /api/orders/query`，未发货订单不返回发货内容，已发货订单返回发货内容。
-- 新增 `/admin/orders?token=change-me` 简单后台订单页，使用 `ADMIN_TOKEN` 做基础保护。
+- 第四阶段新增 `/admin/orders` 简单后台订单页，当时使用 URL token 做基础保护。
 - 新增 `POST /api/admin/orders/confirm`，管理员人工确认付款后，在事务中扣减库存、创建发货记录并完成订单。
 - `/order/[orderNo]/pay` 在订单已发货后展示发货内容，未发货时仍只展示人工付款说明。
 - 本阶段仍不接入真实支付，不做用户注册，不做复杂后台权限系统。
@@ -148,7 +151,33 @@ npm run db:reset
 - 新增 `POST /api/payments/stripe/webhook`，校验 Stripe webhook 签名后处理支付成功事件。
 - 支付成功后只通过 webhook 将订单支付状态更新为 `paid`，不自动扣减库存、不自动创建 DeliveryItem。
 - 发货仍保留第四阶段后台人工确认流程，由管理员确认后再扣减库存并分配发货内容。
-- 人工付款、后台 `ADMIN_TOKEN` 确认付款、订单查询和发货内容展示逻辑保持可用。
+- 人工付款、后台确认付款、订单查询和发货内容展示逻辑保持可用。
+
+后台权限系统阶段已完成：
+
+- 新增 `/admin/login` 后台登录页。
+- 新增 `POST /api/admin/login` 和 `POST /api/admin/logout`。
+- 使用 `ADMIN_USERNAME`、`ADMIN_PASSWORD`、`ADMIN_SESSION_SECRET` 配置后台登录。
+- 登录成功后写入 httpOnly cookie session。
+- `/admin`、`/admin/orders` 和 `POST /api/admin/orders/confirm` 改为校验后台 session。
+- `/admin/orders` 不再依赖 URL token，未登录访问会跳转到 `/admin/login`。
+- 后台人工确认发货逻辑保持不变，仍由管理员点击按钮后扣库存并创建 DeliveryItem。
+
+### 后台登录配置
+
+`.env` 中配置：
+
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-this-password
+ADMIN_SESSION_SECRET=replace-with-a-long-random-string
+```
+
+后台登录入口：
+
+```bash
+http://localhost:3000/admin/login
+```
 
 ### Stripe 支付配置
 
@@ -176,8 +205,8 @@ http://localhost:3000/api/payments/stripe/webhook
 - 不实现用户注册。
 - 不实现购物车。
 - 不实现完整后台业务。
-- 不新增登录、会员、批发价、阶梯价。
-- 不做用户注册或复杂后台权限系统。
+- 不新增前台用户登录、会员、批发价、阶梯价。
+- 不做用户注册、会员系统或复杂 RBAC。
 
 ## 下一阶段开发计划
 

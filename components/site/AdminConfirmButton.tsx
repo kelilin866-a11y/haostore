@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
-export function AdminConfirmButton({
-  orderNo,
-  token,
-}: {
-  orderNo: string;
-  token: string;
-}) {
+export function AdminConfirmButton({ orderNo }: { orderNo: string }) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +18,7 @@ export function AdminConfirmButton({
       const response = await fetch("/api/admin/orders/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderNo, token }),
+        body: JSON.stringify({ orderNo }),
       });
       const result = (await response.json()) as {
         ok: boolean;
