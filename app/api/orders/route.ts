@@ -136,8 +136,12 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  if (availableCount <= 0) {
+    return jsonError("该规格已售罄");
+  }
+
   if (availableCount < quantity) {
-    return jsonError("当前规格库存不足，请减少数量或选择其他规格");
+    return jsonError(`库存不足，当前库存 ${availableCount}`);
   }
 
   const unitPrice = variant.price;

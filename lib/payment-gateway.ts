@@ -17,6 +17,36 @@ export function isStripePaymentEnabled() {
   );
 }
 
+export function getStripeCheckoutConfigIssues() {
+  const issues: string[] = [];
+
+  if (paymentGatewayConfig.provider !== "stripe") {
+    issues.push("PAYMENT_PROVIDER 必须设置为 stripe");
+  }
+  if (!paymentGatewayConfig.stripeSecretKey) {
+    issues.push("STRIPE_SECRET_KEY 未配置");
+  } else if (
+    !paymentGatewayConfig.stripeSecretKey.startsWith("sk_") ||
+    paymentGatewayConfig.stripeSecretKey.length < 20
+  ) {
+    issues.push("STRIPE_SECRET_KEY 不是有效的 Stripe secret key");
+  }
+  if (!/^[a-z]{3}$/.test(paymentGatewayConfig.currency)) {
+    issues.push("PAYMENT_CURRENCY 必须是三位小写货币代码，例如 cny");
+  }
+
+  try {
+    const url = new URL(paymentGatewayConfig.siteUrl);
+    if (!["http:", "https:"].includes(url.protocol)) {
+      issues.push("NEXT_PUBLIC_SITE_URL 必须是完整 http 或 https URL");
+    }
+  } catch {
+    issues.push("NEXT_PUBLIC_SITE_URL 必须是完整 URL，例如 http://localhost:3000");
+  }
+
+  return issues;
+}
+
 export function getStripeClient() {
   if (!isStripePaymentEnabled()) {
     throw new Error("Stripe payment gateway is not configured");

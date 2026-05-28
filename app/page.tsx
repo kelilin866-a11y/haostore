@@ -24,13 +24,13 @@ const steps = [
   {
     step: "Step 03",
     title: "确认支付",
-    description: "第一版采用后台人工确认付款，后续预留正式支付网关。",
+    description: "支持 Stripe Checkout 在线支付，支付成功后系统通过 Stripe webhook 自动确认付款状态。",
     icon: CreditCard,
   },
   {
     step: "Step 04",
-    title: "自动发货",
-    description: "管理员确认后，系统从文本库存中分配内容，并在订单页展示。",
+    title: "确认发货",
+    description: "发货仍由后台管理员人工确认，支付成功前不会展示任何发货内容。",
     icon: PackageCheck,
   },
 ];
@@ -48,7 +48,7 @@ export default function HomePage() {
               虚拟商品自动发货商城
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
-              面向账号类、卡密类和教程类文本商品的无登录、无购物车商城。当前版本仅提供前台页面骨架和 mock 数据演示，不接入真实支付。
+              面向账号类、卡密类和教程类文本商品的无登录、无购物车商城。当前支持 Stripe Checkout 在线支付，支付成功后由 webhook 确认付款状态，后台管理员再人工确认发货。
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button variant="deal" size="lg" asChild>
@@ -64,7 +64,7 @@ export default function HomePage() {
           </div>
           <div className="rounded-lg border border-white/10 bg-white/10 p-5">
             <div className="grid gap-3">
-              {["人工确认付款", "文本库存发货", "订单号 + 联系方式查询", "SEO文章系统预留"].map((item) => (
+              {["Stripe Checkout 在线支付", "后台人工确认发货", "订单号 + 联系方式查询", "SEO文章系统预留"].map((item) => (
                 <div key={item} className="flex items-center gap-3 rounded-md bg-white/10 p-3">
                   <CheckCircle2 className="h-5 w-5 text-deal" aria-hidden="true" />
                   <span className="text-sm text-slate-100">{item}</span>

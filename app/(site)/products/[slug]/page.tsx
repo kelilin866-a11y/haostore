@@ -56,7 +56,7 @@ export default async function ProductDetailPage({
   );
   const noticeItems = product.notice
     ? product.notice.split(/\r?\n/).filter(Boolean)
-    : ["请在购买前确认用途合规。", "付款后请联系客服提供订单号。"];
+    : ["请在购买前确认用途合规。", "支付状态确认后，发货仍由后台管理员人工确认。"];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -76,7 +76,7 @@ export default async function ProductDetailPage({
               <CardContent className="space-y-4 text-sm leading-7 text-slate-600">
                 <p>{product.description || product.summary || "暂无商品说明。"}</p>
                 <p>
-                  本阶段下单后会创建待人工确认付款订单，并跳转到人工支付说明页，不会接入真实支付，也不会自动发货。
+                  支持 Stripe Checkout 在线支付。支付成功后，系统会通过支付回调确认付款状态。发货仍由后台管理员人工确认，确认前不会展示任何发货内容。
                 </p>
               </CardContent>
             </Card>
@@ -158,7 +158,11 @@ export default async function ProductDetailPage({
                   >
                     <span className="font-medium text-primary">{variant.name}</span>
                     <span>{formatCurrency(variant.price)}</span>
-                    <span>库存 {variant.availableStock}</span>
+                    <span>
+                      {variant.availableStock > 0
+                        ? `库存 ${variant.availableStock}`
+                        : "已售罄"}
+                    </span>
                     <span className="font-mono">{variant.sku}</span>
                   </div>
                 ))}

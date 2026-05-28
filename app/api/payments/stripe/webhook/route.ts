@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PaymentMethod } from "@prisma/client";
+import { PaymentMethod, Prisma } from "@prisma/client";
 import type Stripe from "stripe";
 
 import { prisma } from "@/lib/db";
@@ -15,6 +15,10 @@ function getSessionOrderNo(session: Stripe.Checkout.Session) {
   return session.metadata?.orderNo || session.client_reference_id || "";
 }
 
+function getSessionOrderId(session: Stripe.Checkout.Session) {
+  return session.metadata?.orderId || "";
+}
+
 function getSessionTransactionId(session: Stripe.Checkout.Session) {
   return typeof session.payment_intent === "string"
     ? session.payment_intent
@@ -23,22 +27,52 @@ function getSessionTransactionId(session: Stripe.Checkout.Session) {
 
 async function markOrderPaid({
   orderNo,
+  orderId,
   transactionId,
   note,
   checkoutSessionId,
 }: {
-  orderNo: string;
+  orderNo?: string;
+  orderId?: string;
   transactionId: string;
   note: string;
   checkoutSessionId?: string;
 }) {
-  if (!orderNo) {
-    return { ok: false, message: "Stripe 事件缺少订单号", status: 400 };
+  const orderLookup: Prisma.OrderWhereInput[] = [];
+
+  if (orderNo) {
+    orderLookup.push({ orderNo });
+  }
+  if (orderId) {
+    orderLookup.push({ id: orderId });
+  }
+
+  console.log("[stripe/webhook] resolving order", {
+    orderNo,
+    orderId,
+    transactionId,
+    checkoutSessionId,
+  });
+
+  if (orderLookup.length === 0) {
+    console.error("[stripe/webhook] missing order metadata", {
+      orderNo,
+      orderId,
+      transactionId,
+      checkoutSessionId,
+    });
+    return {
+      ok: false,
+      message: "Stripe event is missing orderNo or orderId",
+      status: 400,
+    };
   }
 
   return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { orderNo },
+    const order = await tx.order.findFirst({
+      where: {
+        OR: orderLookup,
+      },
       include: {
         paymentRecords: {
           orderBy: { createdAt: "desc" },
@@ -47,7 +81,13 @@ async function markOrderPaid({
     });
 
     if (!order) {
-      return { ok: false, message: "订单不存在", status: 404 };
+      console.error("[stripe/webhook] order not found", {
+        orderNo,
+        orderId,
+        transactionId,
+        checkoutSessionId,
+      });
+      return { ok: false, message: "Order not found", status: 404 };
     }
 
     const knownTransactionIds = [transactionId, checkoutSessionId].filter(
@@ -80,16 +120,33 @@ async function markOrderPaid({
       });
     }
 
-    await tx.order.update({
+    const updatedOrder = await tx.order.update({
       where: { id: order.id },
       data: {
         paymentStatus: "paid",
         ...(order.orderStatus === "completed" ? {} : { orderStatus: "paid" }),
         paidAt: order.paidAt || new Date(),
       },
+      select: {
+        id: true,
+        orderNo: true,
+        paymentStatus: true,
+        deliveryStatus: true,
+        orderStatus: true,
+        paidAt: true,
+      },
     });
 
-    return { ok: true, orderNo: order.orderNo };
+    console.log("[stripe/webhook] order update result", {
+      orderId: updatedOrder.id,
+      orderNo: updatedOrder.orderNo,
+      paymentStatus: updatedOrder.paymentStatus,
+      deliveryStatus: updatedOrder.deliveryStatus,
+      orderStatus: updatedOrder.orderStatus,
+      paidAt: updatedOrder.paidAt,
+    });
+
+    return { ok: true, orderNo: updatedOrder.orderNo };
   });
 }
 
@@ -97,8 +154,18 @@ async function markCheckoutPaid(
   session: Stripe.Checkout.Session,
   eventType: string,
 ) {
+  console.log("[stripe/webhook] checkout session received", {
+    eventType,
+    sessionId: session.id,
+    metadata: session.metadata,
+    orderNo: getSessionOrderNo(session),
+    orderId: getSessionOrderId(session),
+    paymentStatus: session.payment_status,
+  });
+
   return markOrderPaid({
     orderNo: getSessionOrderNo(session),
+    orderId: getSessionOrderId(session),
     transactionId: getSessionTransactionId(session),
     checkoutSessionId: session.id,
     note: `Stripe webhook: ${eventType}`,
@@ -109,8 +176,17 @@ async function markPaymentIntentPaid(
   paymentIntent: Stripe.PaymentIntent,
   eventType: string,
 ) {
+  console.log("[stripe/webhook] payment intent received", {
+    eventType,
+    paymentIntentId: paymentIntent.id,
+    metadata: paymentIntent.metadata,
+    orderNo: paymentIntent.metadata.orderNo || "",
+    orderId: paymentIntent.metadata.orderId || "",
+  });
+
   return markOrderPaid({
     orderNo: paymentIntent.metadata.orderNo || "",
+    orderId: paymentIntent.metadata.orderId || "",
     transactionId: paymentIntent.id,
     note: `Stripe webhook: ${eventType}`,
   });
@@ -118,6 +194,13 @@ async function markPaymentIntentPaid(
 
 async function markCheckoutFailed(session: Stripe.Checkout.Session) {
   const orderNo = getSessionOrderNo(session);
+
+  console.log("[stripe/webhook] checkout failed or expired", {
+    sessionId: session.id,
+    metadata: session.metadata,
+    orderNo,
+    orderId: getSessionOrderId(session),
+  });
 
   if (!orderNo) {
     return;
@@ -148,9 +231,11 @@ export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
 
   if (!signature) {
-    return jsonError("缺少 Stripe 签名", 400);
+    console.error("[stripe/webhook] missing Stripe-Signature header");
+    return jsonError("Missing Stripe signature", 400);
   }
   if (!paymentGatewayConfig.stripeWebhookSecret) {
+    console.error("[stripe/webhook] STRIPE_WEBHOOK_SECRET is not configured");
     return jsonError("Stripe webhook secret is not configured", 500);
   }
 
@@ -164,9 +249,17 @@ export async function POST(request: Request) {
       signature,
       paymentGatewayConfig.stripeWebhookSecret,
     );
-  } catch {
-    return jsonError("Stripe webhook 签名校验失败", 400);
+  } catch (error) {
+    console.error("[stripe/webhook] signature verification failed", {
+      error: error instanceof Error ? error.message : error,
+    });
+    return jsonError("Stripe webhook signature verification failed", 400);
   }
+
+  console.log("[stripe/webhook] received event", {
+    type: event.type,
+    id: event.id,
+  });
 
   if (
     event.type === "checkout.session.completed" ||
@@ -178,11 +271,24 @@ export async function POST(request: Request) {
       const result = await markCheckoutPaid(session, event.type);
 
       if (!result.ok) {
+        console.error("[stripe/webhook] checkout paid handling failed", {
+          eventType: event.type,
+          sessionId: session.id,
+          metadata: session.metadata,
+          message: result.message,
+        });
         return jsonError(
-          result.message || "Stripe 支付回调处理失败",
+          result.message || "Stripe payment webhook handling failed",
           result.status,
         );
       }
+    } else {
+      console.log("[stripe/webhook] checkout session is not paid yet", {
+        eventType: event.type,
+        sessionId: session.id,
+        paymentStatus: session.payment_status,
+        metadata: session.metadata,
+      });
     }
   }
 
@@ -191,8 +297,14 @@ export async function POST(request: Request) {
     const result = await markPaymentIntentPaid(paymentIntent, event.type);
 
     if (!result.ok) {
+      console.error("[stripe/webhook] payment intent handling failed", {
+        eventType: event.type,
+        paymentIntentId: paymentIntent.id,
+        metadata: paymentIntent.metadata,
+        message: result.message,
+      });
       return jsonError(
-        result.message || "Stripe 支付回调处理失败",
+        result.message || "Stripe payment webhook handling failed",
         result.status,
       );
     }

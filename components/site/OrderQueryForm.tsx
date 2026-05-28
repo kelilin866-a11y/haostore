@@ -189,7 +189,7 @@ export function OrderQueryForm() {
                   </div>
                 ) : (
                   <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
-                    待人工确认付款。付款后请联系客服提供订单号，管理员确认后才会发货。
+                    若支付状态暂未更新，请稍后刷新或通过订单查询查看。发货仍由后台管理员人工确认，确认前不会展示任何发货内容。
                   </div>
                 )}
               </CardContent>

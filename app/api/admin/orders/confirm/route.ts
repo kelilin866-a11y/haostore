@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   try {
     const result = await confirmPaymentAndDeliverOrder({
       orderNo,
-      note: "后台人工确认付款",
+      note: "后台人工确认发货",
     });
 
     if (!result.ok) {
@@ -48,6 +48,6 @@ export async function POST(request: Request) {
       return jsonError("库存状态已变化，请刷新后重试");
     }
 
-    return jsonError("确认付款并发货失败，请稍后重试", 500);
+    return jsonError("确认发货失败，请稍后重试", 500);
   }
 }

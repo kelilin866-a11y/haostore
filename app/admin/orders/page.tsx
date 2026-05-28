@@ -19,10 +19,8 @@ export default async function AdminOrdersPage() {
 
   const orders = await prisma.order.findMany({
     where: {
+      paymentStatus: "paid",
       deliveryStatus: "pending",
-      orderStatus: {
-        in: ["pending_payment", "paid"],
-      },
     },
     include: {
       items: {
@@ -39,10 +37,10 @@ export default async function AdminOrdersPage() {
           <div>
             <p className="text-sm font-semibold text-accentblue">后台管理</p>
             <h1 className="mt-2 text-3xl font-bold text-primary">
-              待人工确认订单
+              已支付待发货订单
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-500">
-              当前登录账号：{session.username}。已支付但待发货的订单会保留在这里，由管理员人工确认后发货。
+              当前登录账号：{session.username}。已通过 Stripe webhook 确认付款、但尚未发货的订单会保留在这里，由后台管理员人工确认发货。
             </p>
           </div>
           <AdminLogoutButton />

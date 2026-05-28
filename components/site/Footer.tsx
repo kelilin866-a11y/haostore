@@ -9,7 +9,7 @@ export function Footer() {
         <div>
           <p className="font-semibold text-primary">虚拟商品商城</p>
           <p className="mt-2 leading-6">
-            第一阶段前台页面骨架，采用人工确认付款，后续预留正式支付网关。
+            支持 Stripe Checkout 在线支付，支付成功后通过 webhook 确认付款状态，发货仍由后台管理员人工确认。
           </p>
         </div>
         <div>

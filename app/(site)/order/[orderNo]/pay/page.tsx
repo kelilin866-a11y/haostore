@@ -22,11 +22,14 @@ import { formatCurrency } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 const paymentMethodLabels: Record<string, string> = {
-  manual_alipay: "人工支付宝",
-  manual_wechat: "人工微信",
-  manual_usdt: "人工 USDT",
+  manual_alipay: "支付宝备用通道",
+  manual_wechat: "微信备用通道",
+  manual_usdt: "USDT 备用通道",
   gateway_reserved: paymentGatewayConfig.gatewayName,
 };
+
+const currentPaymentNotice =
+  "支持 Stripe Checkout 在线支付。支付成功后系统通过 Stripe webhook 自动确认付款状态。发货仍由后台管理员人工确认，支付成功前不会展示任何发货内容。若支付状态暂未更新，请稍后刷新或通过订单查询查看。";
 
 async function getSettings() {
   const settings = await prisma.setting.findMany({
@@ -39,10 +42,7 @@ async function getSettings() {
   const map = new Map(settings.map((setting) => [setting.key, setting.value]));
 
   return {
-    paymentNotice:
-      map.get("payment_notice") ||
-      process.env.MANUAL_PAYMENT_NOTICE ||
-      "当前为人工确认支付，付款后请联系客服提供订单号。管理员确认后才会发货。",
+    paymentNotice: currentPaymentNotice,
     customerTelegram:
       map.get("customer_telegram") ||
       process.env.CUSTOMER_SERVICE_TELEGRAM ||
@@ -81,9 +81,12 @@ export default async function PayPage({
   }
 
   const isDelivered = order.deliveryStatus === "delivered";
-  const isGatewayOrder = order.paymentMethod === "gateway_reserved";
+  const isOnlinePaymentAvailable = isStripePaymentEnabled();
   const canUseOnlinePayment =
-    isGatewayOrder && !isDelivered && order.paymentStatus !== "paid";
+    isOnlinePaymentAvailable && !isDelivered && order.paymentStatus !== "paid";
+  const displayedPaymentMethod = canUseOnlinePayment
+    ? paymentGatewayConfig.gatewayName
+    : paymentMethodLabels[order.paymentMethod] || order.paymentMethod;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
@@ -96,10 +99,10 @@ export default async function PayPage({
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-500">
           {isDelivered
-            ? "付款已确认并完成发货，请及时保存发货内容。"
-            : isGatewayOrder
-              ? "当前订单选择在线支付。支付成功后，系统会通过支付回调确认付款状态，发货仍由后台人工确认。"
-              : "当前为人工确认支付，付款后请联系客服提供订单号。管理员确认后才会发货。"}
+            ? "支付状态已确认并完成发货，请及时保存发货内容。"
+            : isOnlinePaymentAvailable
+              ? currentPaymentNotice
+              : "在线支付配置暂不可用，请稍后刷新或通过订单查询查看支付状态。发货仍由后台管理员人工确认。"}
         </p>
       </div>
 
@@ -115,7 +118,7 @@ export default async function PayPage({
         {searchParams?.payment === "cancelled" ? (
           <Card className="border-amber-200 bg-amber-50">
             <CardContent className="p-4 text-sm text-amber-800">
-              你已取消在线支付，可以重新发起支付，或联系客服改用人工付款。
+              你已取消在线支付，可以重新发起 Stripe Checkout。支付成功前不会展示任何发货内容。
             </CardContent>
           </Card>
         ) : null}
@@ -158,7 +161,7 @@ export default async function PayPage({
               <p>
                 支付方式：
                 <span className="font-medium text-primary">
-                  {paymentMethodLabels[order.paymentMethod] || order.paymentMethod}
+                  {displayedPaymentMethod}
                 </span>
               </p>
             </div>
@@ -218,13 +221,7 @@ export default async function PayPage({
                 支付网关：{paymentGatewayConfig.gatewayName}。支付成功后，系统会通过
                 webhook 自动确认付款状态。发货仍由后台人工确认，确认前不会展示任何发货内容。
               </p>
-              {isStripePaymentEnabled() ? (
-                <PaymentCheckoutButton orderNo={order.orderNo} />
-              ) : (
-                <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
-                  在线支付环境变量暂未配置，请先使用人工付款方式或联系客服。
-                </div>
-              )}
+              <PaymentCheckoutButton orderNo={order.orderNo} />
               <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-slate-600">
                 未完成后台发货确认前，页面不会展示任何发货内容。
               </div>
@@ -235,13 +232,13 @@ export default async function PayPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-warning" aria-hidden="true" />
-                付款说明
+                支付说明
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm leading-7 text-slate-600">
               <p>{settings.paymentNotice}</p>
               <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
-                当前订单不会自动发货，不展示任何发货内容。请付款后联系客服提供订单号，等待管理员人工确认。
+                当前订单不会自动发货，不展示任何发货内容。支付状态确认后，仍需后台管理员人工确认发货。
               </div>
             </CardContent>
           </Card>

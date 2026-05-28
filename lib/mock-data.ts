@@ -47,7 +47,7 @@ export const products: Product[] = [
     title: "Telegram 欧美老号",
     category: "Telegram",
     description: "适合基础登录测试与账号资料研究的文本类账号商品。",
-    tags: ["欧美地区", "文本发货", "人工确认付款"],
+    tags: ["欧美地区", "文本发货", "Stripe Checkout"],
     price: 39,
     stock: 126,
     specs: ["单个账号", "5 个账号包", "10 个账号包"],
@@ -196,14 +196,14 @@ export const articles: Article[] = [
         body: "订单详情会展示商品名称、数量、支付状态、发货状态和文本发货内容。",
       },
       {
-        heading: "付款如何确认",
-        body: "第一版采用后台人工确认付款，管理员确认后系统再从文本库存分配发货内容。",
+        heading: "支付如何确认",
+        body: "支持 Stripe Checkout 在线支付，支付成功后系统通过 Stripe webhook 自动确认付款状态，发货仍由后台管理员人工确认。",
       },
     ],
     faqs: [
       {
         question: "现在是否接入真实支付？",
-        answer: "第一阶段不接入真实支付，只保留后续支付网关扩展空间。",
+        answer: "当前支持 Stripe Checkout 在线支付。支付状态由 Stripe webhook 确认，发货仍由后台管理员人工确认。",
       },
       {
         question: "查询订单需要登录吗？",
@@ -217,7 +217,7 @@ export const mockOrder = {
   orderNo: "VG202605250001",
   productName: "Telegram 欧美老号",
   quantity: 2,
-  paymentStatus: "待人工确认",
+  paymentStatus: "待支付确认",
   deliveryStatus: "演示已发货",
   customerService: "Telegram: @demo_service / Email: support@example.com",
   deliveryItems: [

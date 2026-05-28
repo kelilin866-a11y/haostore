@@ -1,8 +1,8 @@
 # 虚拟商品自动发货商城
 
-一个“虚拟商品自动发货商城”的基础项目。当前已经完成前台页面骨架、数据库模型、商品数据库读取、下单流程、后台人工确认付款、自动发货和订单查询闭环。
+一个“虚拟商品自动发货商城”的基础项目。当前已经完成前台页面骨架、数据库模型、商品数据库读取、下单流程、Stripe Checkout 在线支付、后台人工确认发货和订单查询闭环。
 
-项目目标是建设一个无登录、无购物车的虚拟商品商城，销售账号类、卡密类和教程类文本商品。第一版支付采用后台人工确认，后续阶段管理员确认付款后，系统再从文本库存中分配发货内容。
+项目目标是建设一个无登录、无购物车的虚拟商品商城，销售账号类、卡密类和教程类文本商品。当前支持 Stripe Checkout 在线支付，支付成功后系统通过 Stripe webhook 自动确认付款状态，发货仍由后台管理员人工确认。
 
 ## 技术栈
 
@@ -47,9 +47,9 @@ npm run dev
 DATABASE_URL=
 ADMIN_EMAIL=
 ADMIN_PASSWORD_HASH=
-ADMIN_USERNAME=
-ADMIN_PASSWORD=
-ADMIN_SESSION_SECRET=
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-me
+ADMIN_SESSION_SECRET=change-me-to-a-long-random-secret
 AI_PROVIDER=
 AI_API_KEY=
 NEXT_PUBLIC_SITE_URL=
@@ -130,9 +130,9 @@ npm run db:reset
 
 - `/products` 从数据库读取 active 商品、分类、规格和可用库存数量。
 - `/products/[slug]` 从数据库读取商品详情、active 规格、价格和库存。
-- 商品详情页提供基础下单表单：规格、数量、联系方式和人工支付方式。
+- 商品详情页提供基础下单表单：规格、数量、联系方式和 Stripe Checkout 在线支付方式。
 - 新增 `POST /api/orders`，创建 `pending` 支付状态、`pending` 发货状态、`pending_payment` 订单状态的订单。
-- 新增 `/order/[orderNo]/pay` 人工支付说明页，展示订单信息、付款说明和客服联系方式。
+- 新增 `/order/[orderNo]/pay` 支付说明页，展示订单信息、Stripe Checkout 入口和客服联系方式。
 - 第三阶段订单不会扣减库存，不会创建发货内容，不会自动发货。
 
 第四阶段已完成：
@@ -140,9 +140,9 @@ npm run db:reset
 - `/order/query` 支持使用订单号和联系方式查询真实订单。
 - 新增 `POST /api/orders/query`，未发货订单不返回发货内容，已发货订单返回发货内容。
 - 第四阶段新增 `/admin/orders` 简单后台订单页，当时使用 URL token 做基础保护。
-- 新增 `POST /api/admin/orders/confirm`，管理员人工确认付款后，在事务中扣减库存、创建发货记录并完成订单。
-- `/order/[orderNo]/pay` 在订单已发货后展示发货内容，未发货时仍只展示人工付款说明。
-- 本阶段仍不接入真实支付，不做用户注册，不做复杂后台权限系统。
+- 新增 `POST /api/admin/orders/confirm`，后台管理员确认发货后，在事务中扣减库存、创建发货记录并完成订单。
+- `/order/[orderNo]/pay` 在订单已发货后展示发货内容，未发货时只展示支付状态和发货等待说明。
+- 本阶段当时未接入真实支付；当前版本已接入 Stripe Checkout，仍不做用户注册，不做复杂后台权限系统。
 
 第五阶段已完成：
 
@@ -151,7 +151,7 @@ npm run db:reset
 - 新增 `POST /api/payments/stripe/webhook`，校验 Stripe webhook 签名后处理支付成功事件。
 - 支付成功后只通过 webhook 将订单支付状态更新为 `paid`，不自动扣减库存、不自动创建 DeliveryItem。
 - 发货仍保留第四阶段后台人工确认流程，由管理员确认后再扣减库存并分配发货内容。
-- 人工付款、后台确认付款、订单查询和发货内容展示逻辑保持可用。
+- Stripe Checkout、后台人工确认发货、订单查询和发货内容展示逻辑保持可用。
 
 后台权限系统阶段已完成：
 
@@ -169,8 +169,8 @@ npm run db:reset
 
 ```env
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=change-this-password
-ADMIN_SESSION_SECRET=replace-with-a-long-random-string
+ADMIN_PASSWORD=change-me
+ADMIN_SESSION_SECRET=change-me-to-a-long-random-secret
 ```
 
 后台登录入口：
@@ -178,6 +178,9 @@ ADMIN_SESSION_SECRET=replace-with-a-long-random-string
 ```bash
 http://localhost:3000/admin/login
 ```
+
+访问 `/admin/login` 后，使用 `.env` 中的 `ADMIN_USERNAME` 和
+`ADMIN_PASSWORD` 登录后台。生产环境请替换示例密码和 session secret。
 
 ### Stripe 支付配置
 
@@ -198,7 +201,9 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 http://localhost:3000/api/payments/stripe/webhook
 ```
 
-未配置 `STRIPE_SECRET_KEY` 或 `STRIPE_WEBHOOK_SECRET` 时，人工付款流程仍然可用，在线支付按钮会提示支付网关未配置。
+未配置 `STRIPE_SECRET_KEY` 时，订单待支付页会提示在线支付配置暂不可用；配置 Stripe 后才显示 Stripe Checkout 支付入口。
+
+修改 `.env` 中的支付环境变量后，需要重启 `npm run dev`，Next.js 才会重新读取服务端环境变量。
 
 ## 当前阶段限制
 

@@ -15,7 +15,7 @@ const terms = [
   },
   {
     title: "支付说明",
-    body: "第一版规划采用后台人工确认付款。本阶段不接入真实支付，不处理真实资金。",
+    body: "当前支持 Stripe Checkout 在线支付。支付成功后系统通过 Stripe webhook 自动确认付款状态，发货仍由后台管理员人工确认。",
   },
   {
     title: "售后说明",

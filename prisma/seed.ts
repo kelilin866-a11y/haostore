@@ -232,7 +232,7 @@ async function main() {
         seoKeywords: "自动发货商城查询订单",
         canonical: "/blog/how-to-query-order",
         faqJson: [
-          { question: "现在是否接入真实支付？", answer: "没有，当前仍不接入真实支付。" },
+          { question: "现在是否接入真实支付？", answer: "当前支持 Stripe Checkout 在线支付。支付状态由 Stripe webhook 确认，发货仍由后台管理员人工确认。" },
         ],
         relatedProductIds: [productIds.get("telegram-old-account")!],
         publishedAt: new Date(),
@@ -245,7 +245,7 @@ async function main() {
       { key: "site_name", value: "虚拟商品自动发货商城" },
       { key: "customer_telegram", value: "@demo_service" },
       { key: "customer_email", value: "support@example.com" },
-      { key: "payment_notice", value: "第一版采用后台人工确认付款，暂不接入真实支付网关。" },
+      { key: "payment_notice", value: "支持 Stripe Checkout 在线支付。支付成功后系统通过 Stripe webhook 自动确认付款状态，发货仍由后台管理员人工确认。" },
       { key: "after_sales_notice", value: "售后请提供订单号、联系方式和问题说明。" },
     ],
   });

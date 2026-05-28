@@ -42,6 +42,14 @@ export async function confirmPaymentAndDeliverOrder({
       };
     }
 
+    if (order.paymentStatus !== "paid") {
+      return {
+        ok: false,
+        message: "订单尚未支付，不能确认发货",
+        status: 400,
+      };
+    }
+
     if (order.items.length === 0) {
       return { ok: false, message: "订单没有商品明细", status: 400 };
     }
@@ -157,7 +165,7 @@ export async function confirmPaymentAndDeliverOrder({
 
     return {
       ok: true,
-      message: "确认付款并发货成功",
+      message: "确认发货成功",
       orderNo: order.orderNo,
       deliveryItems: allocations.map((item) => item.content),
     };

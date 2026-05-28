@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -22,13 +22,13 @@ type OrderFormProps = {
 };
 
 const paymentMethods = [
-  { value: "manual_alipay", label: "人工支付宝" },
-  { value: "manual_wechat", label: "人工微信" },
-  { value: "manual_usdt", label: "人工 USDT" },
   {
     value: "gateway_reserved",
-    label: `${process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_NAME || "在线支付"}（真实支付）`,
+    label: process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_NAME || "Stripe Checkout 在线支付",
   },
+  { value: "manual_alipay", label: "支付宝备用通道" },
+  { value: "manual_wechat", label: "微信备用通道" },
+  { value: "manual_usdt", label: "USDT 备用通道" },
 ];
 
 const invalidContactMessage =
@@ -39,23 +39,92 @@ function isValidContact(value: string) {
   return contact.length >= 5;
 }
 
+function getInitialVariantId(variants: VariantOption[]) {
+  return (
+    variants.find((variant) => variant.availableStock > 0)?.id ??
+    variants[0]?.id ??
+    ""
+  );
+}
+
+function clampQuantity(value: number, maxStock: number) {
+  if (maxStock <= 0) {
+    return 1;
+  }
+
+  if (!Number.isFinite(value) || value < 1) {
+    return 1;
+  }
+
+  return Math.min(Math.floor(value), maxStock);
+}
+
 export function OrderForm({ productId, variants }: OrderFormProps) {
   const router = useRouter();
-  const [variantId, setVariantId] = useState(variants[0]?.id ?? "");
+  const [variantId, setVariantId] = useState(() => getInitialVariantId(variants));
   const [quantity, setQuantity] = useState(1);
   const [contact, setContact] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("manual_alipay");
+  const [paymentMethod, setPaymentMethod] = useState("gateway_reserved");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedVariant = variants.find((variant) => variant.id === variantId);
+  const hasPurchasableVariant = variants.some(
+    (variant) => variant.availableStock > 0,
+  );
+  const selectedStock = selectedVariant?.availableStock ?? 0;
+  const canPurchaseSelectedVariant = selectedStock > 0;
+
   const total = useMemo(() => {
-    return selectedVariant ? selectedVariant.price * quantity : 0;
-  }, [quantity, selectedVariant]);
+    return selectedVariant && canPurchaseSelectedVariant
+      ? selectedVariant.price * quantity
+      : 0;
+  }, [canPurchaseSelectedVariant, quantity, selectedVariant]);
+
+  useEffect(() => {
+    const nextVariantId = getInitialVariantId(variants);
+    setVariantId((currentVariantId) => {
+      const currentVariant = variants.find(
+        (variant) => variant.id === currentVariantId,
+      );
+
+      if (currentVariant && currentVariant.availableStock > 0) {
+        return currentVariantId;
+      }
+
+      return nextVariantId;
+    });
+  }, [variants]);
+
+  useEffect(() => {
+    setQuantity((currentQuantity) =>
+      clampQuantity(currentQuantity, selectedStock),
+    );
+  }, [selectedStock]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+
+    if (!selectedVariant) {
+      setMessage("请选择有效规格");
+      return;
+    }
+
+    if (selectedVariant.availableStock <= 0) {
+      setMessage("该规格已售罄，请选择其他规格");
+      return;
+    }
+
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      setMessage("购买数量必须是正整数");
+      return;
+    }
+
+    if (quantity > selectedVariant.availableStock) {
+      setMessage(`库存不足，当前库存 ${selectedVariant.availableStock}`);
+      return;
+    }
 
     if (!isValidContact(contact)) {
       setMessage(invalidContactMessage);
@@ -111,14 +180,27 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
         <Label htmlFor="variantId">规格选择</Label>
         <select
           id="variantId"
-          className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
+          className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           value={variantId}
-          onChange={(event) => setVariantId(event.target.value)}
+          onChange={(event) => {
+            const nextVariant = variants.find(
+              (variant) => variant.id === event.target.value,
+            );
+            setVariantId(event.target.value);
+            setQuantity(clampQuantity(quantity, nextVariant?.availableStock ?? 0));
+          }}
         >
           {variants.map((variant) => (
-            <option key={variant.id} value={variant.id}>
-              {variant.name} / {formatCurrency(variant.price)} / 库存{" "}
-              {variant.availableStock} / {variant.sku}
+            <option
+              key={variant.id}
+              value={variant.id}
+              disabled={variant.availableStock <= 0}
+            >
+              {variant.name} / {formatCurrency(variant.price)} /{" "}
+              {variant.availableStock > 0
+                ? `库存 ${variant.availableStock}`
+                : "已售罄"}{" "}
+              / {variant.sku}
             </option>
           ))}
         </select>
@@ -130,9 +212,12 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
           id="quantity"
           type="number"
           min={1}
-          max={selectedVariant?.availableStock || 1}
+          max={Math.max(selectedStock, 1)}
           value={quantity}
-          onChange={(event) => setQuantity(Number(event.target.value))}
+          disabled={!canPurchaseSelectedVariant}
+          onChange={(event) =>
+            setQuantity(clampQuantity(Number(event.target.value), selectedStock))
+          }
         />
       </div>
 
@@ -150,9 +235,10 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
         <Label htmlFor="paymentMethod">支付方式</Label>
         <select
           id="paymentMethod"
-          className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
+          className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           value={paymentMethod}
           onChange={(event) => setPaymentMethod(event.target.value)}
+          disabled={!canPurchaseSelectedVariant}
         >
           {paymentMethods.map((method) => (
             <option key={method.value} value={method.value}>
@@ -182,14 +268,16 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
         variant="deal"
         size="lg"
         className="w-full"
-        disabled={
-          isSubmitting || !selectedVariant || selectedVariant.availableStock < quantity
-        }
+        disabled={isSubmitting || !canPurchaseSelectedVariant}
       >
-        {isSubmitting ? "正在创建订单" : "立即购买"}
+        {!hasPurchasableVariant
+          ? "暂无库存"
+          : isSubmitting
+            ? "正在创建订单"
+            : "立即购买"}
       </Button>
       <p className="text-xs leading-5 text-slate-500">
-        人工付款会进入后台确认流程；在线支付成功后会通过支付回调确认订单并发货。
+        支持 Stripe Checkout 在线支付。支付成功后，系统会通过支付回调确认付款状态。发货仍由后台管理员人工确认，确认前不会展示任何发货内容。
       </p>
     </form>
   );

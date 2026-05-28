@@ -58,7 +58,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         <p className="text-sm font-semibold text-accentblue">产品中心</p>
         <h1 className="mt-2 text-3xl font-bold text-primary">虚拟商品列表</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-          当前商品从数据库读取。下单后仅生成待人工确认付款订单，不会接入真实支付或自动发货。
+          当前商品从数据库读取。支持 Stripe Checkout 在线支付，支付成功后系统通过 webhook 自动确认付款状态，发货仍由后台管理员人工确认。
         </p>
       </div>
 

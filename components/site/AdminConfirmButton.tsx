@@ -44,7 +44,7 @@ export function AdminConfirmButton({ orderNo }: { orderNo: string }) {
         onClick={handleConfirm}
         disabled={isLoading}
       >
-        {isLoading ? "处理中" : "确认付款并发货"}
+        {isLoading ? "处理中" : "确认发货"}
       </Button>
       {message ? <p className="text-xs text-slate-500">{message}</p> : null}
     </div>
