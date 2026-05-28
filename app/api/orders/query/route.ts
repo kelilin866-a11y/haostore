@@ -52,11 +52,7 @@ async function findOrders({
   contact: string;
 }) {
   return prisma.order.findMany({
-    where: orderNo
-      ? { orderNo }
-      : {
-          contact,
-        },
+    where: orderNo ? { orderNo } : { contact },
     include: {
       items: {
         orderBy: { createdAt: "asc" },
@@ -95,6 +91,10 @@ export async function POST(request: Request) {
 
   if (orders.length === 0) {
     return jsonError("订单不存在", 404);
+  }
+
+  if (orderNo && contact && orders[0].contact !== contact) {
+    return jsonError("订单号与联系方式不匹配", 403);
   }
 
   return NextResponse.json({
