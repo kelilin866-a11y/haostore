@@ -17,6 +17,9 @@ type QueryResult = {
   deliveryStatus: string;
   orderStatus: string;
   paymentMethod: string;
+  createdAt: string;
+  paidAt: string | null;
+  deliveredAt: string | null;
   items: {
     id: string;
     productName: string;
@@ -30,6 +33,34 @@ type QueryResult = {
     content: string;
   }[];
 };
+
+function getOrderStatusText(order: QueryResult) {
+  if (order.deliveryStatus === "delivered") {
+    return "已发货";
+  }
+
+  if (order.paymentStatus === "paid") {
+    return "已付款，等待发货";
+  }
+
+  return "待支付";
+}
+
+function getOrderStatusVariant(order: QueryResult) {
+  if (order.deliveryStatus === "delivered") {
+    return "success" as const;
+  }
+
+  if (order.paymentStatus === "paid") {
+    return "deal" as const;
+  }
+
+  return "warning" as const;
+}
+
+function formatDate(value: string | null) {
+  return value ? new Date(value).toLocaleString("zh-CN") : "-";
+}
 
 export function OrderQueryForm() {
   const [orderNo, setOrderNo] = useState("");
@@ -113,88 +144,85 @@ export function OrderQueryForm() {
 
       {orders.length > 0 ? (
         <div className="grid gap-5">
-          {orders.map((order) => (
-            <Card key={order.orderNo}>
-              <CardHeader>
-                <CardTitle className="flex flex-wrap items-center justify-between gap-3">
-                  <span>订单 {order.orderNo}</span>
-                  <Badge
-                    variant={
-                      order.deliveryStatus === "delivered" ? "success" : "outline"
-                    }
-                  >
-                    {order.deliveryStatus}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 text-sm">
-                <div className="grid gap-3 rounded-md bg-slate-50 p-4 sm:grid-cols-2">
-                  <p>
-                    总金额：
-                    <span className="font-medium text-primary">
-                      {formatCurrency(order.totalAmount)}
-                    </span>
-                  </p>
-                  <p>
-                    支付状态：
-                    <Badge
-                      variant={
-                        order.paymentStatus === "paid" ? "success" : "warning"
-                      }
-                    >
-                      {order.paymentStatus}
+          {orders.map((order) => {
+            const isDelivered = order.deliveryStatus === "delivered";
+
+            return (
+              <Card key={order.orderNo}>
+                <CardHeader>
+                  <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+                    <span>订单 {order.orderNo}</span>
+                    <Badge variant={getOrderStatusVariant(order)}>
+                      {getOrderStatusText(order)}
                     </Badge>
-                  </p>
-                  <p>
-                    联系方式：
-                    <span className="font-medium text-primary">{order.contact}</span>
-                  </p>
-                  <p>
-                    订单状态：
-                    <span className="font-medium text-primary">
-                      {order.orderStatus}
-                    </span>
-                  </p>
-                </div>
-
-                <div>
-                  <p className="mb-2 font-medium text-primary">商品明细</p>
-                  <div className="grid gap-2 rounded-md border border-slate-200 bg-white p-4">
-                    {order.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="grid gap-2 sm:grid-cols-[1fr_120px_80px_120px]"
-                      >
-                        <span className="font-medium text-primary">
-                          {item.productName}
-                        </span>
-                        <span>{item.variantName}</span>
-                        <span>数量 {item.quantity}</span>
-                        <span>{formatCurrency(item.subtotal)}</span>
-                      </div>
-                    ))}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 text-sm">
+                  <div className="grid gap-3 rounded-md bg-slate-50 p-4 sm:grid-cols-2">
+                    <p>
+                      总金额：
+                      <span className="font-medium text-primary">
+                        {formatCurrency(order.totalAmount)}
+                      </span>
+                    </p>
+                    <p>
+                      联系方式：
+                      <span className="font-medium text-primary">
+                        {order.contact}
+                      </span>
+                    </p>
+                    <p>创建时间：{formatDate(order.createdAt)}</p>
+                    <p>支付时间：{formatDate(order.paidAt)}</p>
+                    <p>发货时间：{formatDate(order.deliveredAt)}</p>
+                    <p>
+                      订单状态：
+                      <span className="font-medium text-primary">
+                        {getOrderStatusText(order)}
+                      </span>
+                    </p>
                   </div>
-                </div>
 
-                {order.deliveryStatus === "delivered" ? (
                   <div>
-                    <p className="mb-2 font-medium text-primary">发货内容</p>
-                    <div className="grid gap-2 rounded-md border border-slate-200 bg-white p-4 font-mono text-xs text-slate-700">
-                      {order.deliveryItems.map((item) => (
-                        <p key={item.id} className="break-all">
-                          {item.content}
-                        </p>
+                    <p className="mb-2 font-medium text-primary">商品明细</p>
+                    <div className="grid gap-2 rounded-md border border-slate-200 bg-white p-4">
+                      {order.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="grid gap-2 sm:grid-cols-[1fr_120px_80px_120px]"
+                        >
+                          <span className="font-medium text-primary">
+                            {item.productName}
+                          </span>
+                          <span>{item.variantName}</span>
+                          <span>数量 {item.quantity}</span>
+                          <span>{formatCurrency(item.subtotal)}</span>
+                        </div>
                       ))}
                     </div>
                   </div>
-                ) : (
-                  <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
-                    若支付状态暂未更新，请稍后刷新或通过订单查询查看。发货仍由后台管理员人工确认，确认前不会展示任何发货内容。
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+
+                  {isDelivered ? (
+                    <div>
+                      <p className="mb-2 font-medium text-primary">发货内容</p>
+                      <div className="grid gap-2 rounded-md border border-slate-200 bg-white p-4 font-mono text-xs text-slate-700">
+                        {order.deliveryItems.map((item) => (
+                          <p key={item.id} className="break-all">
+                            {item.content}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                      {order.paymentStatus === "paid"
+                        ? "已付款，等待后台管理员人工确认发货。确认前不会展示任何发货内容。"
+                        : "待支付。支付成功后系统会通过 Stripe webhook 自动确认付款状态，发货仍由后台管理员人工确认。"}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : null}
     </div>
