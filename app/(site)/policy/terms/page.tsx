@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 const terms = [
   {
     title: "商品性质",
-    body: "本商城展示的商品为虚拟文本类商品，包括账号类、卡密类和教程类资料。第一阶段页面内容均为 mock 演示。",
+    body: "本商城展示的商品为虚拟文本类商品，包括账号类、卡密类和教程类资料。用户购买前应确认商品说明、规格、库存和售后范围。",
   },
   {
     title: "用户责任",
@@ -28,7 +28,7 @@ export default function TermsPage() {
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-bold text-primary">服务条款</h1>
       <p className="mt-3 text-sm leading-6 text-slate-500">
-        以下为第一阶段基础占位文本，后续可根据正式业务和法律要求完善。
+        以下条款用于说明虚拟商品购买、支付、发货和售后的基础规则，正式上线前可结合实际法律要求继续完善。
       </p>
       <div className="mt-8 grid gap-4">
         {terms.map((term) => (

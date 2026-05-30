@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "虚拟商品自动发货商城",
-  description: "虚拟商品自动发货商城第一阶段基础项目",
+  description: "支持 Stripe Checkout 在线支付与后台人工确认发货的虚拟商品商城",
 };
 
 export default function RootLayout({

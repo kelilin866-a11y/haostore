@@ -9,10 +9,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { type Product } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 
-export function ProductCard({ product }: { product: Product }) {
+type ProductCardValue = {
+  slug: string;
+  title: string;
+  category: string;
+  description: string;
+  tags?: string[];
+  price: number;
+  stock: number;
+};
+
+export function ProductCard({ product }: { product: ProductCardValue }) {
   return (
     <Card className="flex h-full flex-col overflow-hidden">
       <div className="flex aspect-[16/9] items-center justify-center bg-slate-100 text-sm text-slate-400">
@@ -27,7 +36,7 @@ export function ProductCard({ product }: { product: Product }) {
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-4">
         <div className="flex flex-wrap gap-2">
-          {product.tags.map((tag) => (
+          {(product.tags ?? ["Stripe Checkout", "文本发货"]).map((tag) => (
             <Badge key={tag} variant="secondary">
               {tag}
             </Badge>
@@ -35,7 +44,7 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
         <div className="mt-auto flex items-end justify-between gap-3">
           <div>
-            <p className="text-xs text-slate-500">价格</p>
+            <p className="text-xs text-slate-500">价格起</p>
             <p className="text-2xl font-semibold text-primary">
               {formatCurrency(product.price)}
             </p>

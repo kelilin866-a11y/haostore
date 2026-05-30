@@ -25,7 +25,7 @@ export default function AfterSalesPage() {
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-bold text-primary">售后政策</h1>
       <p className="mt-3 text-sm leading-6 text-slate-500">
-        当前为基础占位版本，用于第一阶段前台页面展示。
+        售后处理以订单记录、支付状态和后台发货记录为准。遇到问题请提供订单号联系客服核验。
       </p>
       <div className="mt-8 grid gap-4">
         {policies.map((policy) => (
