@@ -1,8 +1,8 @@
-# 虚拟商品自动发货商城
+# 虚拟商品商城
 
-一个“虚拟商品自动发货商城”的基础项目。当前已经完成前台页面骨架、数据库模型、商品数据库读取、下单流程、Stripe Checkout 在线支付、后台人工确认发货和订单查询闭环。
+一个“虚拟商品商城”的基础项目。当前已经完成前台页面、数据库模型、商品数据库读取、下单流程、Stripe Checkout 在线支付、后台人工确认发货、订单查询闭环、后台商品管理和后台 SEO 文章管理。
 
-项目目标是建设一个无登录、无购物车的虚拟商品商城，销售账号类、卡密类和教程类文本商品。当前支持 Stripe Checkout 在线支付，支付成功后系统通过 Stripe webhook 自动确认付款状态，发货仍由后台管理员人工确认。
+项目目标是建设一个无注册、无前台登录、无购物车的虚拟商品商城，销售账号类、卡密类和教程类文本商品。当前支持 Stripe Checkout 在线支付，支付成功后系统通过 Stripe webhook 确认付款状态，发货仍由后台管理员人工确认。
 
 ## 技术栈
 
@@ -50,8 +50,6 @@ ADMIN_PASSWORD_HASH=
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=change-me
 ADMIN_SESSION_SECRET=change-me-to-a-long-random-secret
-AI_PROVIDER=
-AI_API_KEY=
 NEXT_PUBLIC_SITE_URL=
 NEXT_PUBLIC_SITE_NAME=
 MANUAL_PAYMENT_NOTICE=
@@ -106,7 +104,42 @@ npm run db:reset
 
 如果本地暂时没有真实 PostgreSQL 数据库，可以先只运行 `npx prisma validate` 和 `npm run prisma:generate`。
 
-## 当前阶段完成内容
+## 当前版本业务闭环
+
+当前版本保留并维护这一条主链路：
+
+商品浏览 -> 下单 -> Stripe Checkout 在线支付 -> Stripe webhook 确认付款 -> 后台人工确认发货 -> 用户订单查询。
+
+当前版本已经包含：
+
+- 前台商品/规格展示。
+- 前台免注册、免登录下单。
+- Stripe Checkout 在线支付入口。
+- Stripe webhook 签名校验和付款状态确认。
+- 后台登录、商品管理、SEO 文章管理和订单发货。
+- 后台人工确认发货后扣库存、创建发货内容。
+- 用户通过订单号或联系方式查询订单。
+
+## 范围边界
+
+当前版本明确不做，也不作为后续规划待办：
+
+- 用户注册/登录。
+- 会员中心。
+- 购物车。
+- 优惠券。
+- 阶梯价、批发价、会员价。
+- 自动发货。
+- 邮件通知。
+- 复杂内容运营系统。
+
+发货边界：
+
+- Stripe webhook 只确认付款状态并写入支付记录。
+- Stripe webhook 不扣库存、不创建 `DeliveryItem`、不把订单改为 completed。
+- 只有管理员登录后台并人工确认发货后，才会扣库存、创建发货内容并完成订单。
+
+## 已完成阶段摘要
 
 第一阶段已完成：
 
@@ -115,7 +148,7 @@ npm run db:reset
 - 添加 shadcn/ui 风格基础组件。
 - 创建首页、产品中心、商品详情、订单查询、订单成功、文章列表、文章详情、客服、服务条款、售后政策和后台占位页面。
 - 创建 `/api/health` 健康检查接口。
-- 使用 `lib/mock-data.ts` 提供前台 mock 数据。
+- 使用 `lib/mock-data.ts` 提供初始前台 mock 数据；当前核心商品和文章页面已改为数据库读取。
 
 第二阶段已完成：
 
@@ -142,7 +175,7 @@ npm run db:reset
 - 第四阶段新增 `/admin/orders` 简单后台订单页，当时使用 URL token 做基础保护。
 - 新增 `POST /api/admin/orders/confirm`，后台管理员确认发货后，在事务中扣减库存、创建发货记录并完成订单。
 - `/order/[orderNo]/pay` 在订单已发货后展示发货内容，未发货时只展示支付状态和发货等待说明。
-- 本阶段当时未接入真实支付；当前版本已接入 Stripe Checkout，仍不做用户注册，不做复杂后台权限系统。
+- 本阶段当时未接入真实支付；当前版本已接入 Stripe Checkout，仍不做用户注册、前台登录、会员、购物车或自动发货。
 
 第五阶段已完成：
 
@@ -162,6 +195,22 @@ npm run db:reset
 - `/admin`、`/admin/orders` 和 `POST /api/admin/orders/confirm` 改为校验后台 session。
 - `/admin/orders` 不再依赖 URL token，未登录访问会跳转到 `/admin/login`。
 - 后台人工确认发货逻辑保持不变，仍由管理员点击按钮后扣库存并创建 DeliveryItem。
+
+后台商品管理阶段已完成：
+
+- 新增 `/admin/products` 后台商品管理。
+- 支持查看、新增、编辑商品。
+- 支持商品上架/下架。
+- 支持规格名称、sku、价格、库存文本和启用状态管理。
+- 前台产品中心和商品详情读取数据库商品。
+
+后台 SEO 文章管理阶段已完成：
+
+- 新增 `/admin/articles` 后台 SEO 文章管理。
+- 支持查看、新增、编辑文章。
+- 支持文章发布/下架。
+- 支持标题、slug、摘要、正文、SEO 标题和 SEO 描述。
+- 前台 `/blog` 和 `/blog/[slug]` 只展示已发布数据库文章。
 
 ### 后台登录配置
 
@@ -205,17 +254,16 @@ http://localhost:3000/api/payments/stripe/webhook
 
 修改 `.env` 中的支付环境变量后，需要重启 `npm run dev`，Next.js 才会重新读取服务端环境变量。
 
-## 当前阶段限制
+## 后续维护方向
 
-- 不实现用户注册。
-- 不实现购物车。
-- 不实现完整后台业务。
-- 不新增前台用户登录、会员、批发价、阶梯价。
-- 不做用户注册、会员系统或复杂 RBAC。
+后续只建议围绕稳定性和上线运维做小步维护，例如：
 
-## 下一阶段开发计划
+- Stripe webhook 日志和异常排查。
+- 后台操作审计记录。
+- 生产环境部署、备份和监控说明。
+- 文案、商品和 SEO 文章内容维护。
 
-下一阶段建议做支付异常处理、退款/人工复核流程、后台审计日志和部署前安全加固。
+不扩展用户注册、会员中心、购物车、优惠券、阶梯价、自动发货、邮件通知或复杂内容运营系统。
 
 ## 部署前检查
 
