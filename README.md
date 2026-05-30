@@ -282,7 +282,7 @@ http://localhost:3000/api/payments/stripe/webhook
 ```bash
 npm install
 npm run prisma:generate
-npm run prisma:migrate
+npm run prisma:deploy
 npm run build
 npm run start
 ```
@@ -290,14 +290,37 @@ npm run start
 Vercel / Railway 等平台通常使用构建命令：
 
 ```bash
-npm run build
+npm run prisma:generate && npm run build
 ```
 
 上线前需要先对生产数据库执行迁移：
 
 ```bash
-npm run prisma:migrate
+npm run prisma:deploy
 ```
+
+`npm run prisma:migrate` 只用于本地开发，它执行 `prisma migrate dev`；生产环境请使用 `npm run prisma:deploy`，它执行 `prisma migrate deploy`。
+
+### Vercel 部署步骤
+
+1. 在 Vercel 导入当前 Git 仓库。
+2. 配置生产环境变量：`DATABASE_URL`、`NEXT_PUBLIC_SITE_URL`、`NEXT_PUBLIC_SITE_NAME`、`PAYMENT_PROVIDER`、`PAYMENT_CURRENCY`、`NEXT_PUBLIC_PAYMENT_GATEWAY_NAME`、`STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET`、`ADMIN_USERNAME`、`ADMIN_PASSWORD`、`ADMIN_SESSION_SECRET`、`CUSTOMER_SERVICE_TELEGRAM`、`CUSTOMER_SERVICE_EMAIL`。
+3. 将 `NEXT_PUBLIC_SITE_URL` 设置为生产域名，例如 `https://your-domain.com`。
+4. 构建命令设置为 `npm run prisma:generate && npm run build`。
+5. 首次上线前，在可连接生产数据库的环境执行 `npm run prisma:deploy`。
+6. 部署完成后，在 Stripe Dashboard 配置生产 webhook endpoint。
+7. 访问 `/api/health`、`/products`、`/blog`、`/admin/login` 做上线检查。
+
+### Railway 部署步骤
+
+1. 在 Railway 创建 PostgreSQL 数据库，并复制连接串作为 `DATABASE_URL`。
+2. 创建 Web Service 并连接当前 Git 仓库。
+3. 配置与 Vercel 相同的生产环境变量。
+4. 构建命令使用 `npm run prisma:generate && npm run build`。
+5. 启动命令使用 `npm run start`。
+6. 首次上线前执行 `npm run prisma:deploy`，确保生产数据库迁移完成。
+7. 部署完成后，将 Railway 生产域名写入 `NEXT_PUBLIC_SITE_URL`，并在 Stripe Dashboard 配置 webhook endpoint。
+8. 完成一笔 Stripe 测试支付，确认 webhook 只更新付款状态，后台仍需人工确认发货。
 
 Stripe webhook 配置步骤：
 
