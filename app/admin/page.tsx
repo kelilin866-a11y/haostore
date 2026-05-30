@@ -18,7 +18,7 @@ const modules = [
   { title: "商品管理", icon: ShoppingBag, href: "/admin/products" },
   { title: "库存管理", icon: Boxes },
   { title: "订单管理", icon: FileText, href: "/admin/orders" },
-  { title: "文章管理", icon: Newspaper },
+  { title: "SEO文章管理", icon: Newspaper, href: "/admin/articles" },
   { title: "AI 文章生成", icon: Sparkles },
   { title: "站点设置", icon: Settings },
 ];
@@ -39,8 +39,8 @@ export default function AdminPage() {
           <p className="text-sm font-semibold text-accentblue">后台管理</p>
           <h1 className="mt-2 text-3xl font-bold text-primary">后台管理</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-            当前登录账号：{session.username}。后台仅用于运营商品、订单和发货，
-            不影响前台免注册下单流程。
+            当前登录账号：{session.username}。后台仅用于运营商品、订单、
+            发货和 SEO 内容，不影响前台免注册下单流程。
           </p>
         </div>
         <AdminLogoutButton />

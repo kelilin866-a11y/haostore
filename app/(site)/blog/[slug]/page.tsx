@@ -1,99 +1,186 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArticleStatus, ProductStatus } from "@prisma/client";
 
-import { ProductCard } from "@/components/site/ProductCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { articles, products } from "@/lib/mock-data";
+import { prisma } from "@/lib/db";
 
-export function generateStaticParams() {
-  return articles.map((article) => ({ slug: article.slug }));
+export const dynamic = "force-dynamic";
+
+type FaqItem = {
+  question: string;
+  answer: string;
+};
+
+function formatDate(date: Date | null) {
+  if (!date) {
+    return "未发布";
+  }
+
+  return date.toLocaleDateString("zh-CN");
 }
 
-export function generateMetadata({
+function getFaqItems(value: unknown): FaqItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(
+    (item): item is FaqItem =>
+      typeof item === "object" &&
+      item !== null &&
+      "question" in item &&
+      "answer" in item &&
+      typeof item.question === "string" &&
+      typeof item.answer === "string",
+  );
+}
+
+function renderContent(content: string) {
+  return content
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      if (block.startsWith("### ")) {
+        return (
+          <h3 key={block} className="text-lg font-semibold text-primary">
+            {block.replace(/^###\s+/, "")}
+          </h3>
+        );
+      }
+
+      if (block.startsWith("## ")) {
+        return (
+          <h2 key={block} className="text-2xl font-semibold text-primary">
+            {block.replace(/^##\s+/, "")}
+          </h2>
+        );
+      }
+
+      return (
+        <p key={block} className="text-sm leading-7 text-slate-600">
+          {block}
+        </p>
+      );
+    });
+}
+
+export async function generateMetadata({
   params,
 }: {
   params: { slug: string };
-}): Metadata {
-  const article = articles.find((item) => item.slug === params.slug);
+}): Promise<Metadata> {
+  const article = await prisma.article.findFirst({
+    where: {
+      slug: params.slug,
+      status: ArticleStatus.published,
+    },
+    select: {
+      title: true,
+      seoTitle: true,
+      seoDescription: true,
+      canonical: true,
+    },
+  });
 
   if (!article) {
     return {};
   }
 
   return {
-    title: article.metaTitle,
-    description: article.metaDescription,
+    title: article.seoTitle || article.title,
+    description: article.seoDescription || undefined,
     alternates: {
-      canonical: article.canonical,
+      canonical: article.canonical || `/blog/${params.slug}`,
     },
   };
 }
 
-export default function BlogDetailPage({
+export default async function BlogDetailPage({
   params,
 }: {
   params: { slug: string };
 }) {
-  const article = articles.find((item) => item.slug === params.slug);
+  const article = await prisma.article.findFirst({
+    where: {
+      slug: params.slug,
+      status: ArticleStatus.published,
+    },
+    include: {
+      category: true,
+    },
+  });
 
   if (!article) {
     notFound();
   }
 
-  const relatedArticles = articles.filter((item) => item.slug !== article.slug).slice(0, 2);
+  const [relatedArticles, relatedProducts] = await Promise.all([
+    prisma.article.findMany({
+      where: {
+        status: ArticleStatus.published,
+        slug: { not: article.slug },
+      },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+      take: 3,
+      select: { slug: true, title: true },
+    }),
+    prisma.product.findMany({
+      where: { status: ProductStatus.active },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      take: 3,
+      select: { slug: true, title: true, summary: true },
+    }),
+  ]);
+
+  const faqItems = getFaqItems(article.faqJson);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
         <article className="min-w-0">
           <div className="mb-6 flex flex-wrap items-center gap-2">
-            <Badge variant="deal">{article.category}</Badge>
-            <span className="text-sm text-slate-500">发布时间：{article.date}</span>
+            <Badge variant="deal">{article.category.name}</Badge>
+            <span className="text-sm text-slate-500">
+              发布时间：{formatDate(article.publishedAt ?? article.createdAt)}
+            </span>
           </div>
           <h1 className="text-3xl font-bold leading-tight text-primary sm:text-4xl">
             {article.title}
           </h1>
           <div className="mt-4 grid gap-1 text-sm text-slate-500">
-            <p>meta title 预留：{article.metaTitle}</p>
-            <p>meta description 预留：{article.metaDescription}</p>
-            <p>canonical 预留：{article.canonical}</p>
+            <p>meta title：{article.seoTitle || article.title}</p>
+            <p>meta description：{article.seoDescription || "未设置"}</p>
+            <p>canonical：{article.canonical || `/blog/${article.slug}`}</p>
           </div>
 
           <div className="mt-8 flex aspect-[16/9] items-center justify-center rounded-lg border border-slate-200 bg-white text-center text-sm text-slate-400">
-            图片占位：{article.imageAlt}
+            图片占位：{article.title}
           </div>
 
-          <div className="mt-8 space-y-8">
-            {article.sections.map((section) => (
-              <section key={section.heading}>
-                <h2 className="text-2xl font-semibold text-primary">{section.heading}</h2>
-                <p className="mt-3 text-sm leading-7 text-slate-600">{section.body}</p>
-                {section.subheadings?.map((subheading) => (
-                  <div key={subheading.heading} className="mt-5">
-                    <h3 className="text-lg font-semibold text-primary">{subheading.heading}</h3>
-                    <p className="mt-2 text-sm leading-7 text-slate-600">{subheading.body}</p>
+          <div className="mt-8 space-y-6">{renderContent(article.content)}</div>
+
+          {faqItems.length > 0 ? (
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle>FAQ</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                {faqItems.map((faq) => (
+                  <div key={faq.question}>
+                    <h3 className="font-semibold text-primary">{faq.question}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      {faq.answer}
+                    </p>
                   </div>
                 ))}
-              </section>
-            ))}
-          </div>
-
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle>FAQ</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              {article.faqs.map((faq) => (
-                <div key={faq.question}>
-                  <h3 className="font-semibold text-primary">{faq.question}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{faq.answer}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : null}
         </article>
 
         <aside className="space-y-5">
@@ -102,11 +189,19 @@ export default function BlogDetailPage({
               <CardTitle>相关文章</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3">
-              {relatedArticles.map((item) => (
-                <Link key={item.slug} href={`/blog/${item.slug}`} className="text-sm font-medium leading-6 text-primary hover:text-accentblue">
-                  {item.title}
-                </Link>
-              ))}
+              {relatedArticles.length === 0 ? (
+                <p className="text-sm text-slate-500">暂无相关文章</p>
+              ) : (
+                relatedArticles.map((item) => (
+                  <Link
+                    key={item.slug}
+                    href={`/blog/${item.slug}`}
+                    className="text-sm font-medium leading-6 text-primary hover:text-accentblue"
+                  >
+                    {item.title}
+                  </Link>
+                ))
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -114,7 +209,24 @@ export default function BlogDetailPage({
               <CardTitle>相关商品推荐</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
-              <ProductCard product={products[0]} />
+              {relatedProducts.length === 0 ? (
+                <p className="text-sm text-slate-500">暂无推荐商品</p>
+              ) : (
+                relatedProducts.map((product) => (
+                  <Link
+                    key={product.slug}
+                    href={`/products/${product.slug}`}
+                    className="rounded-md border border-slate-200 p-3 text-sm hover:border-teal-200 hover:bg-teal-50"
+                  >
+                    <span className="font-semibold text-primary">
+                      {product.title}
+                    </span>
+                    <span className="mt-1 block leading-6 text-slate-500">
+                      {product.summary || "查看商品详情"}
+                    </span>
+                  </Link>
+                ))
+              )}
               <Button variant="outline" asChild>
                 <Link href="/products">查看全部商品</Link>
               </Button>

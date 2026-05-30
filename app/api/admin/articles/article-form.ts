@@ -1,0 +1,79 @@
+import { NextResponse } from "next/server";
+import { ArticleStatus, Prisma } from "@prisma/client";
+
+import { getAdminSession } from "@/lib/admin-auth";
+
+export type ParsedArticleForm = {
+  categoryId: string;
+  title: string;
+  slug: string;
+  summary: string;
+  content: string;
+  seoTitle: string;
+  seoDescription: string;
+  status: ArticleStatus;
+};
+
+export function redirectTo(path: string, request: Request) {
+  return NextResponse.redirect(new URL(path, request.url), { status: 303 });
+}
+
+export function requireAdmin(request: Request) {
+  if (getAdminSession()) {
+    return null;
+  }
+
+  return redirectTo("/admin/login?next=/admin/articles", request);
+}
+
+function getFormString(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function parseArticleStatus(value: string) {
+  if (value === ArticleStatus.published) {
+    return ArticleStatus.published;
+  }
+
+  if (value === ArticleStatus.archived) {
+    return ArticleStatus.archived;
+  }
+
+  return ArticleStatus.draft;
+}
+
+export function parseArticleForm(formData: FormData): ParsedArticleForm {
+  return {
+    categoryId: getFormString(formData, "categoryId"),
+    title: getFormString(formData, "title"),
+    slug: getFormString(formData, "slug"),
+    summary: getFormString(formData, "summary"),
+    content: getFormString(formData, "content"),
+    seoTitle: getFormString(formData, "seoTitle"),
+    seoDescription: getFormString(formData, "seoDescription"),
+    status: parseArticleStatus(getFormString(formData, "status")),
+  };
+}
+
+export function validateArticleForm(data: ParsedArticleForm) {
+  if (!data.categoryId || !data.title || !data.slug || !data.content) {
+    return "标题、slug、分类和正文内容不能为空";
+  }
+
+  return null;
+}
+
+export function getPublishedAt(status: ArticleStatus, current?: Date | null) {
+  if (status === ArticleStatus.published) {
+    return current ?? new Date();
+  }
+
+  return null;
+}
+
+export function isUniqueConstraintError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
+  );
+}

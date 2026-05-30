@@ -9,9 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { type Article } from "@/lib/mock-data";
 
-export function ArticleCard({ article }: { article: Article }) {
+type ArticleCardValue = {
+  slug: string;
+  title: string;
+  category: string;
+  date: string;
+  excerpt: string;
+  keyword?: string | null;
+};
+
+export function ArticleCard({ article }: { article: ArticleCardValue }) {
   return (
     <Card className="flex h-full flex-col">
       <CardHeader>
@@ -23,9 +31,11 @@ export function ArticleCard({ article }: { article: Article }) {
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-3">
         <p className="text-sm leading-6 text-slate-500">{article.excerpt}</p>
-        <p className="text-xs text-slate-500">
-          目标关键词：<span className="text-primary">{article.keyword}</span>
-        </p>
+        {article.keyword ? (
+          <p className="text-xs text-slate-500">
+            目标关键词：<span className="text-primary">{article.keyword}</span>
+          </p>
+        ) : null}
       </CardContent>
       <CardFooter>
         <Button variant="outline" className="w-full" asChild>
