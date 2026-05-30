@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getAdminSession } from "@/lib/admin-auth";
 
 const modules = [
-  { title: "商品管理", icon: ShoppingBag },
+  { title: "商品管理", icon: ShoppingBag, href: "/admin/products" },
   { title: "库存管理", icon: Boxes },
   { title: "订单管理", icon: FileText, href: "/admin/orders" },
   { title: "文章管理", icon: Newspaper },
@@ -39,8 +39,8 @@ export default function AdminPage() {
           <p className="text-sm font-semibold text-accentblue">后台管理</p>
           <h1 className="mt-2 text-3xl font-bold text-primary">后台管理</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-            当前登录账号：{session.username}。本阶段只实现简单后台登录和
-            session 保护，不新增多角色、用户管理或会员体系。
+            当前登录账号：{session.username}。后台仅用于运营商品、订单和发货，
+            不影响前台免注册下单流程。
           </p>
         </div>
         <AdminLogoutButton />
@@ -61,7 +61,9 @@ export default function AdminPage() {
                       <Link href={module.href}>进入</Link>
                     </Button>
                   ) : (
-                    <p className="mt-1 text-sm text-slate-500">功能待后续阶段实现</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      功能待后续阶段实现
+                    </p>
                   )}
                 </div>
               </CardContent>
