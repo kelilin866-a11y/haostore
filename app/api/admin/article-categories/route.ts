@@ -44,5 +44,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return redirectTo("/admin/article-categories", request);
+  return redirectTo("/admin/article-categories");
 }

@@ -77,7 +77,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             size="sm"
             asChild
           >
-            <Link href={`/products?category=${category.slug}`}>{category.name}</Link>
+            <Link href={`/products?category=${encodeURIComponent(category.slug)}`}>
+              {category.name}
+            </Link>
           </Button>
         ))}
       </div>
@@ -100,6 +102,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             const minPrice =
               activePrices.length > 0 ? Math.min(...activePrices) : 0;
             const availableStock = product.inventoryItems.length;
+            const productHref = `/products/${encodeURIComponent(product.slug)}`;
 
             return (
               <Card key={product.id} className="flex h-full flex-col overflow-hidden">
@@ -132,7 +135,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 </CardContent>
                 <CardFooter>
                   <Button variant="deal" className="w-full" asChild>
-                    <Link href={`/products/${product.slug}`}>立即购买</Link>
+                    <Link href={productHref}>立即购买</Link>
                   </Button>
                 </CardFooter>
               </Card>

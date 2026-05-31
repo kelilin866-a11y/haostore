@@ -14,8 +14,11 @@ export type ParsedArticleForm = {
   status: ArticleStatus;
 };
 
-export function redirectTo(path: string, request: Request) {
-  return NextResponse.redirect(new URL(path, request.url), { status: 303 });
+export function redirectTo(path: string) {
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: path },
+  });
 }
 
 export function requireAdmin(request: Request) {
@@ -23,7 +26,7 @@ export function requireAdmin(request: Request) {
     return null;
   }
 
-  return redirectTo("/admin/login?next=/admin/articles", request);
+  return redirectTo("/admin/login?next=/admin/articles");
 }
 
 function getFormString(formData: FormData, key: string) {

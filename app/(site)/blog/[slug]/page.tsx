@@ -215,7 +215,7 @@ export default async function BlogDetailPage({
                 relatedProducts.map((product) => (
                   <Link
                     key={product.slug}
-                    href={`/products/${product.slug}`}
+                    href={`/products/${encodeURIComponent(product.slug)}`}
                     className="rounded-md border border-slate-200 p-3 text-sm hover:border-teal-200 hover:bg-teal-50"
                   >
                     <span className="font-semibold text-primary">

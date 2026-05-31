@@ -35,8 +35,11 @@ export type ParsedVariantForm = {
 
 type InventoryClient = Pick<Prisma.TransactionClient, "inventoryItem">;
 
-export function redirectTo(path: string, request: Request) {
-  return NextResponse.redirect(new URL(path, request.url), { status: 303 });
+export function redirectTo(path: string) {
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: path },
+  });
 }
 
 export function requireAdmin(request: Request) {
@@ -44,7 +47,7 @@ export function requireAdmin(request: Request) {
     return null;
   }
 
-  return redirectTo("/admin/login?next=/admin/products", request);
+  return redirectTo("/admin/login?next=/admin/products");
 }
 
 function getFormString(formData: FormData, key: string) {

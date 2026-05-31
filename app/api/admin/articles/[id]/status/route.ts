@@ -37,5 +37,5 @@ export async function POST(request: Request, { params }: RouteContext) {
     },
   });
 
-  return redirectTo("/admin/articles", request);
+  return redirectTo("/admin/articles");
 }

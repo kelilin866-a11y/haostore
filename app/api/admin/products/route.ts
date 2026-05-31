@@ -81,5 +81,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return redirectTo("/admin/products", request);
+  return redirectTo("/admin/products");
 }

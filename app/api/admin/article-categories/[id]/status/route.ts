@@ -22,5 +22,5 @@ export async function POST(request: Request, { params }: RouteContext) {
     data: { isActive },
   });
 
-  return redirectTo("/admin/article-categories", request);
+  return redirectTo("/admin/article-categories");
 }

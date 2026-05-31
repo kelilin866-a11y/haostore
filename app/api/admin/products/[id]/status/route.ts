@@ -31,5 +31,5 @@ export async function POST(request: Request, { params }: RouteContext) {
     },
   });
 
-  return redirectTo("/admin/products", request);
+  return redirectTo("/admin/products");
 }

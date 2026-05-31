@@ -11,8 +11,11 @@ export type ParsedArticleCategoryForm = {
   isActive: boolean;
 };
 
-export function redirectTo(path: string, request: Request) {
-  return NextResponse.redirect(new URL(path, request.url), { status: 303 });
+export function redirectTo(path: string) {
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: path },
+  });
 }
 
 export function requireAdmin(request: Request) {
@@ -20,7 +23,7 @@ export function requireAdmin(request: Request) {
     return null;
   }
 
-  return redirectTo("/admin/login?next=/admin/article-categories", request);
+  return redirectTo("/admin/login?next=/admin/article-categories");
 }
 
 function getFormString(formData: FormData, key: string) {

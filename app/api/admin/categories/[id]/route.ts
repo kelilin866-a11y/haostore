@@ -53,5 +53,5 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  return redirectTo("/admin/categories", request);
+  return redirectTo("/admin/categories");
 }

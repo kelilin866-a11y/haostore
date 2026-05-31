@@ -22,6 +22,8 @@ type ProductCardValue = {
 };
 
 export function ProductCard({ product }: { product: ProductCardValue }) {
+  const productHref = `/products/${encodeURIComponent(product.slug)}`;
+
   return (
     <Card className="flex h-full flex-col overflow-hidden">
       <div className="flex aspect-[16/9] items-center justify-center bg-slate-100 text-sm text-slate-400">
@@ -54,7 +56,7 @@ export function ProductCard({ product }: { product: ProductCardValue }) {
       </CardContent>
       <CardFooter>
         <Button variant="deal" className="w-full" asChild>
-          <Link href={`/products/${product.slug}`}>立即购买</Link>
+          <Link href={productHref}>立即购买</Link>
         </Button>
       </CardFooter>
     </Card>
