@@ -2,11 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Boxes,
+  FolderTree,
   FileText,
   Newspaper,
   Settings,
   ShoppingBag,
-  Sparkles,
+  Tags,
 } from "lucide-react";
 
 import { AdminLogoutButton } from "@/components/site/AdminLogoutButton";
@@ -16,10 +17,11 @@ import { getAdminSession } from "@/lib/admin-auth";
 
 const modules = [
   { title: "商品管理", icon: ShoppingBag, href: "/admin/products" },
+  { title: "商品分类管理", icon: Tags, href: "/admin/categories" },
   { title: "库存管理", icon: Boxes },
   { title: "订单管理", icon: FileText, href: "/admin/orders" },
   { title: "SEO文章管理", icon: Newspaper, href: "/admin/articles" },
-  { title: "AI 文章生成", icon: Sparkles },
+  { title: "文章分类管理", icon: FolderTree, href: "/admin/article-categories" },
   { title: "站点设置", icon: Settings },
 ];
 

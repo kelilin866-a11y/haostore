@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 const steps = [
   {
     step: "Step 01",

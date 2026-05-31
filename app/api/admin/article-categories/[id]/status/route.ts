@@ -1,0 +1,26 @@
+import { prisma } from "@/lib/db";
+
+import { redirectTo, requireAdmin } from "../../article-category-form";
+
+type RouteContext = {
+  params: {
+    id: string;
+  };
+};
+
+export async function POST(request: Request, { params }: RouteContext) {
+  const authRedirect = requireAdmin(request);
+  if (authRedirect) {
+    return authRedirect;
+  }
+
+  const formData = await request.formData();
+  const isActive = formData.get("isActive") === "true";
+
+  await prisma.articleCategory.update({
+    where: { id: params.id },
+    data: { isActive },
+  });
+
+  return redirectTo("/admin/article-categories", request);
+}
