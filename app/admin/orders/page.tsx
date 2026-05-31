@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -70,10 +70,6 @@ function buildOrdersHref(status: string, keyword: string) {
 
   const query = params.toString();
   return query ? `/admin/orders?${query}` : "/admin/orders";
-}
-
-function formatDate(value: Date | null) {
-  return value ? value.toLocaleString("zh-CN") : "-";
 }
 
 function getPaymentStatusLabel(status: string) {
@@ -238,9 +234,9 @@ export default async function AdminOrdersPage({
                         {formatCurrency(Number(order.totalAmount))}
                       </span>
                     </p>
-                    <p>创建时间：{formatDate(order.createdAt)}</p>
-                    <p>支付时间：{formatDate(order.paidAt)}</p>
-                    <p>发货时间：{formatDate(order.deliveredAt)}</p>
+                    <p>创建时间：{formatDateTime(order.createdAt)}</p>
+                    <p>支付时间：{formatDateTime(order.paidAt)}</p>
+                    <p>发货时间：{formatDateTime(order.deliveredAt)}</p>
                   </div>
 
                   <div

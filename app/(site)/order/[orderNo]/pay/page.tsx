@@ -17,7 +17,7 @@ import {
   isStripePaymentEnabled,
   paymentGatewayConfig,
 } from "@/lib/payment-gateway";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -164,6 +164,9 @@ export default async function PayPage({
                   {displayedPaymentMethod}
                 </span>
               </p>
+              <p>创建时间：{formatDateTime(order.createdAt)}</p>
+              <p>支付时间：{formatDateTime(order.paidAt)}</p>
+              <p>发货时间：{formatDateTime(order.deliveredAt)}</p>
             </div>
 
             <div>

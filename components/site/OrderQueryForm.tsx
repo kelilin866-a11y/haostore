@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 type QueryResult = {
   orderNo: string;
@@ -56,10 +56,6 @@ function getOrderStatusVariant(order: QueryResult) {
   }
 
   return "warning" as const;
-}
-
-function formatDate(value: string | null) {
-  return value ? new Date(value).toLocaleString("zh-CN") : "-";
 }
 
 export function OrderQueryForm() {
@@ -171,9 +167,9 @@ export function OrderQueryForm() {
                         {order.contact}
                       </span>
                     </p>
-                    <p>创建时间：{formatDate(order.createdAt)}</p>
-                    <p>支付时间：{formatDate(order.paidAt)}</p>
-                    <p>发货时间：{formatDate(order.deliveredAt)}</p>
+                    <p>创建时间：{formatDateTime(order.createdAt)}</p>
+                    <p>支付时间：{formatDateTime(order.paidAt)}</p>
+                    <p>发货时间：{formatDateTime(order.deliveredAt)}</p>
                     <p>
                       订单状态：
                       <span className="font-medium text-primary">
