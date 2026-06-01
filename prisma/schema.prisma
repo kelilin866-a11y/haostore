@@ -103,6 +103,7 @@ model Product {
   variants       ProductVariant[]
   inventoryItems InventoryItem[]
   orderItems     OrderItem[]
+  inventoryLogs  InventoryLog[]
 
   @@index([categoryId])
   @@index([status])
@@ -122,6 +123,7 @@ model ProductVariant {
   product        Product         @relation(fields: [productId], references: [id])
   inventoryItems InventoryItem[]
   orderItems     OrderItem[]
+  inventoryLogs  InventoryLog[]
 
   @@index([productId])
   @@index([status])
@@ -144,6 +146,25 @@ model InventoryItem {
 
   @@index([status, productId, variantId])
   @@index([orderId])
+}
+
+model InventoryLog {
+  id             String          @id @default(cuid())
+  productId      String
+  variantId      String?
+  beforeStock    Int
+  afterStock     Int
+  quantityChange Int
+  operationType  String
+  note           String?
+  createdAt      DateTime        @default(now())
+  product        Product         @relation(fields: [productId], references: [id])
+  variant        ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([productId])
+  @@index([variantId])
+  @@index([operationType])
+  @@index([createdAt])
 }
 
 model Order {

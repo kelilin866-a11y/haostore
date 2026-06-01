@@ -11,6 +11,7 @@ const adminLinks = [
   { href: "/admin", label: "后台首页" },
   { href: "/admin/products", label: "商品管理" },
   { href: "/admin/categories", label: "商品分类" },
+  { href: "/admin/inventory", label: "库存管理" },
   { href: "/admin/orders", label: "订单管理" },
   { href: "/admin/articles", label: "SEO文章管理" },
   { href: "/admin/article-categories", label: "文章分类" },
