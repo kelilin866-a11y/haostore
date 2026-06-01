@@ -34,7 +34,7 @@ export default async function AdminInventoryPage() {
           include: {
             inventoryItems: {
               where: { status: "available" },
-              orderBy: { createdAt: "asc" },
+              orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
               select: { content: true },
             },
           },

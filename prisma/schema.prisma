@@ -135,6 +135,7 @@ model InventoryItem {
   variantId    String
   content      String
   status       InventoryStatus @default(available)
+  sortOrder    Int             @default(0)
   orderId      String?
   soldAt       DateTime?
   createdAt    DateTime        @default(now())

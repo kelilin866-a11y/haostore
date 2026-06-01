@@ -177,11 +177,12 @@ export async function syncVariantInventory({
   }
 
   await db.inventoryItem.createMany({
-    data: inventoryLines.map((content) => ({
+    data: inventoryLines.map((content, index) => ({
       productId,
       variantId,
       content,
       status: InventoryStatus.available,
+      sortOrder: index,
     })),
   });
 }

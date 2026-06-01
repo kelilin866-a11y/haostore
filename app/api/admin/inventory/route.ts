@@ -70,11 +70,12 @@ export async function POST(request: Request) {
 
       if (inventoryLines.length > 0) {
         await tx.inventoryItem.createMany({
-          data: inventoryLines.map((content) => ({
+          data: inventoryLines.map((content, index) => ({
             productId: variant.productId,
             variantId: variant.id,
             content,
             status: InventoryStatus.available,
+            sortOrder: index,
           })),
         });
       }
