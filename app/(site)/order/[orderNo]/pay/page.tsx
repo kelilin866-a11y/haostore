@@ -42,7 +42,7 @@ async function getSettings() {
   const map = new Map(settings.map((setting) => [setting.key, setting.value]));
 
   return {
-    paymentNotice: currentPaymentNotice,
+    paymentNotice: map.get("payment_notice") || siteConfig.paymentNotice,
     customerTelegram:
       map.get("customer_telegram") ||
       process.env.CUSTOMER_SERVICE_TELEGRAM ||
@@ -101,7 +101,7 @@ export default async function PayPage({
           {isDelivered
             ? "支付状态已确认并完成发货，请及时保存发货内容。"
             : isOnlinePaymentAvailable
-              ? currentPaymentNotice
+              ? settings.paymentNotice
               : "在线支付配置暂不可用，请稍后刷新或通过订单查询查看支付状态。发货仍由后台管理员人工确认。"}
         </p>
       </div>

@@ -10,6 +10,19 @@ import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+function getHttpImageUrl(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function ProductDetailPage({
   params,
 }: {
@@ -56,15 +69,29 @@ export default async function ProductDetailPage({
   );
   const noticeItems = product.notice
     ? product.notice.split(/\r?\n/).filter(Boolean)
-    : ["请在购买前确认用途合规。", "支付状态确认后，发货仍由后台管理员人工确认。"];
+    : [
+        "请在购买前确认用途合规。",
+        "支付状态确认后，发货仍由后台管理员人工确认。",
+      ];
+  const coverImageUrl = getHttpImageUrl(product.coverImage);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400">
-            {product.title} 主图占位
-          </div>
+          {coverImageUrl ? (
+            <div
+              aria-label={`${product.title} 主图`}
+              className="aspect-[16/9] rounded-lg border border-slate-200 bg-white bg-cover bg-center"
+              role="img"
+              style={{ backgroundImage: `url("${coverImageUrl}")` }}
+            />
+          ) : (
+            <div className="flex aspect-[16/9] items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400">
+              {product.coverImage || `${product.title} 主图占位`}
+            </div>
+          )}
+
           <div className="mt-8 grid gap-5">
             <Card>
               <CardHeader>
@@ -76,7 +103,8 @@ export default async function ProductDetailPage({
               <CardContent className="space-y-4 text-sm leading-7 text-slate-600">
                 <p>{product.description || product.summary || "暂无商品说明。"}</p>
                 <p>
-                  支持 Stripe Checkout 在线支付。支付成功后，系统会通过支付回调确认付款状态。发货仍由后台管理员人工确认，确认前不会展示任何发货内容。
+                  支持 Stripe Checkout 在线支付。支付成功后，系统会通过支付回调确认付款状态。
+                  发货仍由后台管理员人工确认，确认前不会展示任何发货内容。
                 </p>
               </CardContent>
             </Card>
@@ -120,7 +148,8 @@ export default async function ProductDetailPage({
                 <div>
                   <p className="font-medium text-primary">售后说明</p>
                   <p className="mt-2 leading-6">
-                    {product.afterSales || "如有问题，请提供订单号联系客服核验。"}
+                    {product.afterSales ||
+                      "如有问题，请提供订单号联系客服核验。"}
                   </p>
                 </div>
               </CardContent>
