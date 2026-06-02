@@ -22,9 +22,10 @@ type AdminOrdersPageProps = {
 
 const statusFilters = [
   { label: "全部", value: "all" },
-  { label: "待付款", value: "pending_payment" },
-  { label: "已付款待发货", value: "paid_pending_delivery" },
-  { label: "已发货/已完成", value: "completed" },
+  { label: "未支付", value: "pending_payment" },
+  { label: "已支付待发货", value: "paid_pending_delivery" },
+  { label: "已发货", value: "completed" },
+  { label: "已取消/失败", value: "cancelled_or_failed" },
 ];
 
 function getStatusWhere(status: string): Prisma.OrderWhereInput {
@@ -39,6 +40,16 @@ function getStatusWhere(status: string): Prisma.OrderWhereInput {
   if (status === "completed") {
     return {
       OR: [{ deliveryStatus: "delivered" }, { orderStatus: "completed" }],
+    };
+  }
+
+  if (status === "cancelled_or_failed") {
+    return {
+      OR: [
+        { paymentStatus: "failed" },
+        { deliveryStatus: "failed" },
+        { orderStatus: "cancelled" },
+      ],
     };
   }
 
@@ -72,12 +83,64 @@ function buildOrdersHref(status: string, keyword: string) {
   return query ? `/admin/orders?${query}` : "/admin/orders";
 }
 
+function getOrderStatusLabel({
+  paymentStatus,
+  deliveryStatus,
+  orderStatus,
+}: {
+  paymentStatus: string;
+  deliveryStatus: string;
+  orderStatus: string;
+}) {
+  if (
+    paymentStatus === "failed" ||
+    deliveryStatus === "failed" ||
+    orderStatus === "cancelled"
+  ) {
+    return "已取消/失败";
+  }
+
+  if (deliveryStatus === "delivered" || orderStatus === "completed") {
+    return "已发货";
+  }
+
+  if (paymentStatus === "paid" && deliveryStatus === "pending") {
+    return "已支付待发货";
+  }
+
+  return "未支付";
+}
+
+function getOrderStatusVariant(label: string) {
+  if (label === "已发货") {
+    return "success";
+  }
+
+  if (label === "已支付待发货") {
+    return "deal";
+  }
+
+  if (label === "已取消/失败") {
+    return "warning";
+  }
+
+  return "warning";
+}
+
 function getPaymentStatusLabel(status: string) {
-  return status === "paid" ? "已付款" : "待支付";
+  return status === "paid" ? "已支付" : status === "failed" ? "支付失败" : "未支付";
 }
 
 function getDeliveryStatusLabel(status: string) {
-  return status === "delivered" ? "已发货" : "待发货";
+  if (status === "delivered") {
+    return "已发货";
+  }
+
+  if (status === "failed") {
+    return "发货失败";
+  }
+
+  return "待发货";
 }
 
 export default async function AdminOrdersPage({
@@ -107,6 +170,10 @@ export default async function AdminOrdersPage({
       items: {
         orderBy: { createdAt: "asc" },
       },
+      deliveryItems: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -119,8 +186,8 @@ export default async function AdminOrdersPage({
             <p className="text-sm font-semibold text-accentblue">后台管理</p>
             <h1 className="mt-2 text-3xl font-bold text-primary">订单管理</h1>
             <p className="mt-3 text-sm leading-6 text-slate-500">
-              当前登录账号：{session.username}。已通过 Stripe webhook
-              确认付款、但尚未发货的订单，可由后台管理员人工确认发货。
+              当前登录账号：{session.username}。已通过 Stripe webhook 确认付款、
+              但尚未发货的订单，可由后台管理员人工确认发货。
             </p>
           </div>
           <AdminLogoutButton />
@@ -179,6 +246,7 @@ export default async function AdminOrdersPage({
           {orders.map((order) => {
             const canConfirmDelivery =
               order.paymentStatus === "paid" && order.deliveryStatus === "pending";
+            const statusLabel = getOrderStatusLabel(order);
 
             return (
               <Card key={order.id}>
@@ -191,6 +259,9 @@ export default async function AdminOrdersPage({
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      <Badge variant={getOrderStatusVariant(statusLabel)}>
+                        {statusLabel}
+                      </Badge>
                       <Badge
                         variant={
                           order.paymentStatus === "paid" ? "success" : "warning"
@@ -245,21 +316,26 @@ export default async function AdminOrdersPage({
                       !canConfirmDelivery && "md:justify-end",
                     )}
                   >
-                    {canConfirmDelivery ? (
-                      <p className="text-sm text-slate-500">
-                        该订单已付款，等待后台管理员人工确认发货。
-                      </p>
-                    ) : (
-                      <p className="text-sm text-slate-500">
-                        {order.deliveryStatus === "delivered"
-                          ? "该订单已完成发货。"
-                          : "该订单尚未完成在线支付。"}
-                      </p>
-                    )}
-                    <AdminConfirmButton
-                      orderNo={order.orderNo}
-                      disabled={!canConfirmDelivery}
-                    />
+                    <p className="text-sm text-slate-500">
+                      {statusLabel === "已支付待发货"
+                        ? "该订单已付款，等待后台管理员人工确认发货。"
+                        : statusLabel === "已发货"
+                          ? `该订单已发货，已分配 ${order.deliveryItems.length} 条库存内容。`
+                          : statusLabel === "已取消/失败"
+                            ? "该订单处于取消或失败状态。"
+                            : "该订单尚未完成在线支付。"}
+                    </p>
+                    <div className="flex flex-wrap items-start gap-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/admin/orders/${order.orderNo}`}>
+                          查看详情
+                        </Link>
+                      </Button>
+                      <AdminConfirmButton
+                        orderNo={order.orderNo}
+                        disabled={!canConfirmDelivery}
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

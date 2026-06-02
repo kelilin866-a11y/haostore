@@ -8,11 +8,25 @@ type ConfirmPaymentAndDeliverInput = {
   note: string;
 };
 
+type ConfirmDeliveryResult =
+  | {
+      ok: true;
+      message: string;
+      orderNo: string;
+      deliveryItems: string[];
+    }
+  | {
+      ok: false;
+      message: string;
+      status: number;
+      details?: unknown;
+    };
+
 export async function confirmPaymentAndDeliverOrder({
   orderNo,
   transactionId,
   note,
-}: ConfirmPaymentAndDeliverInput) {
+}: ConfirmPaymentAndDeliverInput): Promise<ConfirmDeliveryResult> {
   return prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { orderNo },
@@ -45,8 +59,28 @@ export async function confirmPaymentAndDeliverOrder({
     if (order.paymentStatus !== "paid") {
       return {
         ok: false,
-        message: "订单尚未支付，不能确认发货",
+        message: `订单尚未支付，不能确认发货。当前支付状态：${order.paymentStatus}`,
         status: 400,
+        details: {
+          orderNo: order.orderNo,
+          paymentStatus: order.paymentStatus,
+          deliveryStatus: order.deliveryStatus,
+          orderStatus: order.orderStatus,
+        },
+      };
+    }
+
+    if (order.deliveryStatus !== "pending") {
+      return {
+        ok: false,
+        message: `订单不是待发货状态，不能确认发货。当前发货状态：${order.deliveryStatus}`,
+        status: 400,
+        details: {
+          orderNo: order.orderNo,
+          paymentStatus: order.paymentStatus,
+          deliveryStatus: order.deliveryStatus,
+          orderStatus: order.orderStatus,
+        },
       };
     }
 
@@ -62,6 +96,54 @@ export async function confirmPaymentAndDeliverOrder({
     const usedInventoryIds = new Set<string>();
 
     for (const item of order.items) {
+      const availableCount = await tx.inventoryItem.count({
+        where: {
+          productId: item.productId,
+          variantId: item.variantId,
+          status: InventoryStatus.available,
+        },
+      });
+
+      console.log("[order-delivery] Inventory check", {
+        orderNo: order.orderNo,
+        productId: item.productId,
+        variantId: item.variantId,
+        productTitle: item.productTitleSnapshot,
+        variantName: item.variantNameSnapshot,
+        requiredQuantity: item.quantity,
+        availableCount,
+      });
+
+      if (availableCount === 0) {
+        return {
+          ok: false,
+          message: `没有可用库存，无法发货：${item.productTitleSnapshot} / ${item.variantNameSnapshot}`,
+          status: 400,
+          details: {
+            orderNo: order.orderNo,
+            productId: item.productId,
+            variantId: item.variantId,
+            requiredQuantity: item.quantity,
+            availableCount,
+          },
+        };
+      }
+
+      if (availableCount < item.quantity) {
+        return {
+          ok: false,
+          message: `库存不足，无法发货：${item.productTitleSnapshot} / ${item.variantNameSnapshot}，需要 ${item.quantity} 条，当前可用 ${availableCount} 条`,
+          status: 400,
+          details: {
+            orderNo: order.orderNo,
+            productId: item.productId,
+            variantId: item.variantId,
+            requiredQuantity: item.quantity,
+            availableCount,
+          },
+        };
+      }
+
       const inventoryItems = await tx.inventoryItem.findMany({
         where: {
           productId: item.productId,
@@ -71,15 +153,22 @@ export async function confirmPaymentAndDeliverOrder({
             notIn: Array.from(usedInventoryIds),
           },
         },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
         take: item.quantity,
       });
 
       if (inventoryItems.length < item.quantity) {
         return {
           ok: false,
-          message: `库存不足：${item.productTitleSnapshot} / ${item.variantNameSnapshot}`,
+          message: `库存分配失败：${item.productTitleSnapshot} / ${item.variantNameSnapshot}，请刷新后重试`,
           status: 400,
+          details: {
+            orderNo: order.orderNo,
+            productId: item.productId,
+            variantId: item.variantId,
+            requiredQuantity: item.quantity,
+            allocatedCount: inventoryItems.length,
+          },
         };
       }
 
@@ -158,7 +247,7 @@ export async function confirmPaymentAndDeliverOrder({
         paymentStatus: "paid",
         deliveryStatus: "delivered",
         orderStatus: "completed",
-        paidAt: now,
+        paidAt: order.paidAt ?? now,
         deliveredAt: now,
       },
     });
