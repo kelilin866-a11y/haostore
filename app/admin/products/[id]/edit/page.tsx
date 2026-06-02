@@ -21,7 +21,7 @@ export default async function EditProductPage({
     prisma.category.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      select: { id: true, name: true },
+      select: { id: true, name: true, slug: true },
     }),
     prisma.product.findUnique({
       where: { id: params.id },
@@ -62,6 +62,8 @@ export default async function EditProductPage({
           slug: product.slug,
           summary: product.summary,
           description: product.description,
+          seoTitle: product.seoTitle,
+          seoDescription: product.seoDescription,
           notice: product.notice,
           deliveryFormat: product.deliveryFormat,
           afterSales: product.afterSales,

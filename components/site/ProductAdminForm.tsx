@@ -1,13 +1,22 @@
+"use client";
+
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  generateProductDescriptionTemplate,
+  generateProductSeoDescription,
+  generateProductSeoTitle,
+  generateProductSlug,
+} from "@/lib/product-auto-fill";
 
 type CategoryOption = {
   id: string;
   name: string;
+  slug: string;
 };
 
 type ProductVariantFormValue = {
@@ -26,6 +35,8 @@ type ProductFormValue = {
   slug?: string;
   summary?: string | null;
   description?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   notice?: string | null;
   deliveryFormat?: string | null;
   afterSales?: string | null;
@@ -57,6 +68,38 @@ function getVariantRows(product?: ProductFormValue) {
   return [...existing, ...blankRows].slice(0, Math.max(existing.length + 2, 4));
 }
 
+function getInputValue(id: string) {
+  const element = document.getElementById(id);
+  if (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement ||
+    element instanceof HTMLSelectElement
+  ) {
+    return element.value.trim();
+  }
+
+  return "";
+}
+
+function setInputValue(id: string, value: string, shouldOverwrite = true) {
+  const element = document.getElementById(id);
+  if (
+    !(
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement
+    )
+  ) {
+    return;
+  }
+
+  if (!shouldOverwrite && element.value.trim()) {
+    return;
+  }
+
+  element.value = value;
+  element.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 export function ProductAdminForm({
   action,
   title,
@@ -66,6 +109,51 @@ export function ProductAdminForm({
 }: ProductAdminFormProps) {
   const variantRows = getVariantRows(product);
 
+  function getAutoFillInput() {
+    const categoryId = getInputValue("categoryId");
+    const category = categories.find((item) => item.id === categoryId);
+
+    return {
+      title: getInputValue("title"),
+      categoryName: category?.name,
+      categorySlug: category?.slug,
+      summary: getInputValue("summary"),
+      deliveryType: getInputValue("deliveryFormat"),
+    };
+  }
+
+  function fillSlug(shouldOverwrite = true) {
+    setInputValue(
+      "slug",
+      generateProductSlug(getAutoFillInput()),
+      shouldOverwrite,
+    );
+  }
+
+  function fillSeo(shouldOverwrite = true) {
+    const input = getAutoFillInput();
+    setInputValue("seoTitle", generateProductSeoTitle(input), shouldOverwrite);
+    setInputValue(
+      "seoDescription",
+      generateProductSeoDescription(input),
+      shouldOverwrite,
+    );
+  }
+
+  function fillDescription(shouldOverwrite = true) {
+    setInputValue(
+      "description",
+      generateProductDescriptionTemplate(getAutoFillInput()),
+      shouldOverwrite,
+    );
+  }
+
+  function fillAllEmptyFields() {
+    fillSlug(false);
+    fillSeo(false);
+    fillDescription(false);
+  }
+
   return (
     <form action={action} method="post" className="grid gap-5">
       <Card>
@@ -73,6 +161,30 @@ export function ProductAdminForm({
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-5">
+          <div className="rounded-md border border-teal-100 bg-teal-50 p-4">
+            <div className="flex flex-wrap gap-3">
+              <Button type="button" variant="outline" onClick={() => fillSlug()}>
+                生成 slug
+              </Button>
+              <Button type="button" variant="outline" onClick={() => fillSeo()}>
+                生成 SEO
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fillDescription()}
+              >
+                生成默认说明
+              </Button>
+              <Button type="button" variant="deal" onClick={fillAllEmptyFields}>
+                一键生成上架内容
+              </Button>
+            </div>
+            <p className="mt-3 text-xs text-slate-500">
+              一键生成只会填充空字段；单独生成按钮会按当前标题、分类和简介重新生成对应内容。
+            </p>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="title">商品名称</Label>
@@ -130,13 +242,36 @@ export function ProductAdminForm({
             />
           </div>
 
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="seoTitle">SEO 标题</Label>
+              <Input
+                id="seoTitle"
+                name="seoTitle"
+                defaultValue={product?.seoTitle ?? ""}
+                placeholder="建议 60 个字符以内"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="seoDescription">SEO 描述</Label>
+              <textarea
+                id="seoDescription"
+                name="seoDescription"
+                defaultValue={product?.seoDescription ?? ""}
+                rows={3}
+                placeholder="建议 80-160 个字符"
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="description">商品说明</Label>
             <textarea
               id="description"
               name="description"
               defaultValue={product?.description ?? ""}
-              rows={5}
+              rows={7}
               className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
             />
           </div>

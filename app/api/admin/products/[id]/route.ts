@@ -44,6 +44,8 @@ export async function POST(request: Request, { params }: RouteContext) {
           slug: data.slug,
           summary: data.summary,
           description: data.description,
+          seoTitle: data.seoTitle,
+          seoDescription: data.seoDescription,
           notice: data.notice,
           deliveryFormat: data.deliveryFormat,
           afterSales: data.afterSales,

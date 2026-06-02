@@ -15,6 +15,8 @@ export type ParsedProductForm = {
   slug: string;
   summary: string;
   description: string;
+  seoTitle: string;
+  seoDescription: string;
   notice: string;
   deliveryFormat: string;
   afterSales: string;
@@ -114,6 +116,8 @@ export function parseProductForm(formData: FormData): ParsedProductForm {
     slug: getFormString(formData, "slug"),
     summary: getFormString(formData, "summary"),
     description: getFormString(formData, "description"),
+    seoTitle: getFormString(formData, "seoTitle"),
+    seoDescription: getFormString(formData, "seoDescription"),
     notice: getFormString(formData, "notice"),
     deliveryFormat: getFormString(formData, "deliveryFormat"),
     afterSales: getFormString(formData, "afterSales"),
