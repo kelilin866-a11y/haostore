@@ -1,16 +1,9 @@
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
+import { ProductCard } from "@/components/site/ProductCard";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
-import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +82,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           <CardContent className="p-8 text-center">
             <p className="text-lg font-semibold text-primary">暂无可售商品</p>
             <p className="mt-2 text-sm text-slate-500">
-              请先运行数据库 migration 和 seed，或稍后再查看商品列表。
+              请先在后台准备商品分类、商品和库存，或稍后再查看商品列表。
             </p>
           </CardContent>
         </Card>
@@ -101,44 +94,21 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             );
             const minPrice =
               activePrices.length > 0 ? Math.min(...activePrices) : 0;
-            const availableStock = product.inventoryItems.length;
-            const productHref = `/products/${encodeURIComponent(product.slug)}`;
 
             return (
-              <Card key={product.id} className="flex h-full flex-col overflow-hidden">
-                <div className="flex aspect-[16/9] items-center justify-center bg-slate-100 text-sm text-slate-400">
-                  {product.category.name} 商品图占位
-                </div>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="leading-6">{product.title}</CardTitle>
-                    <Badge variant="deal">{product.category.name}</Badge>
-                  </div>
-                  <p className="text-sm leading-6 text-slate-500">
-                    {product.summary || "暂无商品摘要"}
-                  </p>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col gap-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary">数据库商品</Badge>
-                    <Badge variant="success">active</Badge>
-                  </div>
-                  <div className="mt-auto flex items-end justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-slate-500">价格起</p>
-                      <p className="text-2xl font-semibold text-primary">
-                        {formatCurrency(minPrice)}
-                      </p>
-                    </div>
-                    <p className="text-sm text-slate-500">库存 {availableStock}</p>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button variant="deal" className="w-full" asChild>
-                    <Link href={productHref}>立即购买</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
+              <ProductCard
+                key={product.id}
+                product={{
+                  slug: product.slug,
+                  title: product.title,
+                  category: product.category.name,
+                  coverImage: product.coverImage,
+                  description: product.summary || "查看商品详情和可用规格。",
+                  price: minPrice,
+                  stock: product.inventoryItems.length,
+                  tags: ["数据库商品", "文本发货"],
+                }}
+              />
             );
           })}
         </div>

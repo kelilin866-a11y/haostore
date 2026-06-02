@@ -16,19 +16,43 @@ type ProductCardValue = {
   title: string;
   category: string;
   description: string;
+  coverImage?: string | null;
   tags?: string[];
   price: number;
   stock: number;
 };
 
+function getHttpImageUrl(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 export function ProductCard({ product }: { product: ProductCardValue }) {
   const productHref = `/products/${encodeURIComponent(product.slug)}`;
+  const coverImageUrl = getHttpImageUrl(product.coverImage);
 
   return (
     <Card className="flex h-full flex-col overflow-hidden">
-      <div className="flex aspect-[16/9] items-center justify-center bg-slate-100 text-sm text-slate-400">
-        {product.category} 商品图占位
-      </div>
+      {coverImageUrl ? (
+        <div
+          aria-label={`${product.title} 商品图`}
+          className="aspect-[16/9] bg-slate-100 bg-cover bg-center"
+          role="img"
+          style={{ backgroundImage: `url("${coverImageUrl}")` }}
+        />
+      ) : (
+        <div className="flex aspect-[16/9] items-center justify-center bg-slate-100 text-sm text-slate-400">
+          {product.category} 商品图占位
+        </div>
+      )}
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="leading-6">{product.title}</CardTitle>

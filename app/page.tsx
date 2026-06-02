@@ -185,6 +185,7 @@ export default async function HomePage() {
                     slug: product.slug,
                     title: product.title,
                     category: product.category.name,
+                    coverImage: product.coverImage,
                     description: product.summary || "查看商品详情和可用规格。",
                     price: prices.length > 0 ? Math.min(...prices) : 0,
                     stock: product.inventoryItems.length,
