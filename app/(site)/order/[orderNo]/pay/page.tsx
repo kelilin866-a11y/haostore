@@ -11,12 +11,12 @@ import { PaymentCheckoutButton } from "@/components/site/PaymentCheckoutButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { siteConfig } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import {
   isStripePaymentEnabled,
   paymentGatewayConfig,
 } from "@/lib/payment-gateway";
+import { getSiteSettings } from "@/lib/site-settings";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -32,25 +32,12 @@ const currentPaymentNotice =
   "支持 Stripe Checkout 在线支付。支付成功后系统通过 Stripe webhook 自动确认付款状态。发货仍由后台管理员人工确认，支付成功前不会展示任何发货内容。若支付状态暂未更新，请稍后刷新或通过订单查询查看。";
 
 async function getSettings() {
-  const settings = await prisma.setting.findMany({
-    where: {
-      key: {
-        in: ["payment_notice", "customer_telegram", "customer_email"],
-      },
-    },
-  });
-  const map = new Map(settings.map((setting) => [setting.key, setting.value]));
+  const settings = await getSiteSettings();
 
   return {
-    paymentNotice: map.get("payment_notice") || siteConfig.paymentNotice,
-    customerTelegram:
-      map.get("customer_telegram") ||
-      process.env.CUSTOMER_SERVICE_TELEGRAM ||
-      siteConfig.customerTelegram,
-    customerEmail:
-      map.get("customer_email") ||
-      process.env.CUSTOMER_SERVICE_EMAIL ||
-      siteConfig.customerEmail,
+    paymentNotice: settings.payment_notice,
+    customerTelegram: settings.customer_service_telegram,
+    customerEmail: settings.customer_service_email,
   };
 }
 

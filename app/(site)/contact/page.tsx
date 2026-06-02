@@ -1,9 +1,13 @@
 import { Mail, Send } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { siteConfig } from "@/lib/constants";
+import { getSiteSettings } from "@/lib/site-settings";
 
-export default function ContactPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ContactPage() {
+  const settings = await getSiteSettings();
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="mb-8">
@@ -24,7 +28,7 @@ export default function ContactPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm leading-7 text-slate-600">
-            <p>{siteConfig.customerTelegram}</p>
+            <p>{settings.customer_service_telegram}</p>
             <p>请说明咨询商品、订单号和遇到的问题。</p>
           </CardContent>
         </Card>
@@ -36,7 +40,7 @@ export default function ContactPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm leading-7 text-slate-600">
-            <p>{siteConfig.customerEmail}</p>
+            <p>{settings.customer_service_email}</p>
             <p>售后问题请在邮件标题中附带订单号。</p>
           </CardContent>
         </Card>

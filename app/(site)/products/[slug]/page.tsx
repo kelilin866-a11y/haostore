@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { prisma } from "@/lib/db";
+import { getSiteSettings } from "@/lib/site-settings";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -28,23 +29,26 @@ export default async function ProductDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const product = await prisma.product.findFirst({
-    where: {
-      slug: params.slug,
-      status: "active",
-    },
-    include: {
-      category: true,
-      variants: {
-        where: { status: "active" },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  const [product, settings] = await Promise.all([
+    prisma.product.findFirst({
+      where: {
+        slug: params.slug,
+        status: "active",
       },
-      inventoryItems: {
-        where: { status: "available" },
-        select: { id: true, variantId: true },
+      include: {
+        category: true,
+        variants: {
+          where: { status: "active" },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        },
+        inventoryItems: {
+          where: { status: "available" },
+          select: { id: true, variantId: true },
+        },
       },
-    },
-  });
+    }),
+    getSiteSettings(),
+  ]);
 
   if (!product) {
     notFound();
@@ -69,10 +73,7 @@ export default async function ProductDetailPage({
   );
   const noticeItems = product.notice
     ? product.notice.split(/\r?\n/).filter(Boolean)
-    : [
-        "请在购买前确认用途合规。",
-        "支付状态确认后，发货仍由后台管理员人工确认。",
-      ];
+    : settings.product_default_notice.split(/\r?\n/).filter(Boolean);
   const coverImageUrl = getHttpImageUrl(product.coverImage);
 
   return (
@@ -142,14 +143,13 @@ export default async function ProductDetailPage({
                 <div>
                   <p className="font-medium text-primary">发货格式</p>
                   <p className="mt-2 rounded-md bg-slate-50 p-3 font-mono text-xs text-slate-700">
-                    {product.deliveryFormat || "账号----密码----备注"}
+                    {product.deliveryFormat || settings.product_default_delivery}
                   </p>
                 </div>
                 <div>
                   <p className="font-medium text-primary">售后说明</p>
                   <p className="mt-2 leading-6">
-                    {product.afterSales ||
-                      "如有问题，请提供订单号联系客服核验。"}
+                    {product.afterSales || settings.after_sales_notice}
                   </p>
                 </div>
               </CardContent>

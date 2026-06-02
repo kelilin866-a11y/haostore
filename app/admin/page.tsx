@@ -22,7 +22,7 @@ const modules = [
   { title: "订单管理", icon: FileText, href: "/admin/orders" },
   { title: "SEO文章管理", icon: Newspaper, href: "/admin/articles" },
   { title: "文章分类管理", icon: FolderTree, href: "/admin/article-categories" },
-  { title: "站点设置", icon: Settings },
+  { title: "站点设置", icon: Settings, href: "/admin/settings" },
 ];
 
 export const dynamic = "force-dynamic";

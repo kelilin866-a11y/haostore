@@ -1,14 +1,16 @@
 import Link from "next/link";
 
-import { siteConfig } from "@/lib/constants";
+import { getSiteSettings } from "@/lib/site-settings";
 
-export function Footer() {
+export async function Footer() {
+  const settings = await getSiteSettings();
+
   return (
     <footer className="border-t border-slate-200 bg-white">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 text-sm text-slate-500 sm:px-6 md:grid-cols-3">
         <div>
-          <p className="font-semibold text-primary">{siteConfig.name}</p>
-          <p className="mt-2 leading-6">{siteConfig.description}</p>
+          <p className="font-semibold text-primary">{settings.site_name}</p>
+          <p className="mt-2 leading-6">{settings.footer_description}</p>
         </div>
         <div>
           <p className="font-semibold text-primary">快速入口</p>
@@ -33,8 +35,8 @@ export function Footer() {
             <Link href="/policy/after-sales" className="hover:text-primary">
               售后政策
             </Link>
-            <span>Telegram: {siteConfig.customerTelegram}</span>
-            <span>Email: {siteConfig.customerEmail}</span>
+            <span>Telegram: {settings.customer_service_telegram}</span>
+            <span>Email: {settings.customer_service_email}</span>
           </div>
         </div>
       </div>
