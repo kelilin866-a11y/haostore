@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { BulkInventoryImportForm } from "@/components/site/BulkInventoryImportForm";
 import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { formatDateTime } from "@/lib/utils";
@@ -51,6 +52,17 @@ export default async function AdminInventoryPage() {
       take: 20,
     }),
   ]);
+  const bulkImportProducts = products.map((product) => ({
+    id: product.id,
+    title: product.title,
+    categoryName: product.category.name,
+    variants: product.variants.map((variant) => ({
+      id: variant.id,
+      name: variant.name,
+      sku: variant.sku,
+      status: variant.status,
+    })),
+  }));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -61,6 +73,17 @@ export default async function AdminInventoryPage() {
           按规格维护 available 文本库存。每行代表一条可发货内容，保存后会写入库存变动记录；已售出库存不会被修改。
         </p>
       </div>
+
+      {bulkImportProducts.length > 0 ? (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>批量导入库存</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BulkInventoryImportForm products={bulkImportProducts} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       {products.length === 0 ? (
         <Card>
