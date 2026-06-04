@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,11 @@ type ProductAdminFormProps = {
   submitLabel: string;
   categories: CategoryOption[];
   product?: ProductFormValue;
+};
+
+type UploadState = {
+  status: "idle" | "uploading" | "success" | "error";
+  message: string;
 };
 
 function getVariantRows(product?: ProductFormValue) {
@@ -108,6 +114,11 @@ export function ProductAdminForm({
   product,
 }: ProductAdminFormProps) {
   const variantRows = getVariantRows(product);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [uploadState, setUploadState] = useState<UploadState>({
+    status: "idle",
+    message: "",
+  });
 
   function getAutoFillInput() {
     const categoryId = getInputValue("categoryId");
@@ -152,6 +163,52 @@ export function ProductAdminForm({
     fillSlug(false);
     fillSeo(false);
     fillDescription(false);
+  }
+
+  async function handleImageUpload(file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    setUploadState({ status: "uploading", message: "图片上传中..." });
+
+    try {
+      const response = await fetch("/api/admin/uploads/product-image", {
+        method: "POST",
+        body: formData,
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        url?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !data.ok || !data.url) {
+        setUploadState({
+          status: "error",
+          message: data.error || "图片上传失败，请稍后重试。",
+        });
+        return;
+      }
+
+      setInputValue("coverImage", data.url);
+      setUploadState({
+        status: "success",
+        message: "图片上传成功，已填入商品主图 URL。保存商品后生效。",
+      });
+    } catch (error) {
+      console.error("Upload product image failed", error);
+      setUploadState({
+        status: "error",
+        message: "图片上传失败，请检查网络或 OSS 配置。",
+      });
+    } finally {
+      if (imageInputRef.current) {
+        imageInputRef.current.value = "";
+      }
+    }
   }
 
   return (
@@ -222,12 +279,43 @@ export function ProductAdminForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="coverImage">商品主图/占位图</Label>
-              <Input
-                id="coverImage"
-                name="coverImage"
-                defaultValue={product?.coverImage ?? ""}
-                placeholder="图片 URL 或占位说明"
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <Input
+                  id="coverImage"
+                  name="coverImage"
+                  defaultValue={product?.coverImage ?? ""}
+                  placeholder="图片 URL 或占位说明"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploadState.status === "uploading"}
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  {uploadState.status === "uploading" ? "上传中..." : "上传图片"}
+                </Button>
+              </div>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                className="hidden"
+                onChange={(event) => handleImageUpload(event.target.files?.[0])}
               />
+              <p className="text-xs text-slate-500">
+                支持 jpg、jpeg、png、webp，单张不超过 5MB。上传成功后仍需点击保存商品。
+              </p>
+              {uploadState.message ? (
+                <p
+                  className={`text-xs ${
+                    uploadState.status === "error"
+                      ? "text-red-500"
+                      : "text-emerald-600"
+                  }`}
+                >
+                  {uploadState.message}
+                </p>
+              ) : null}
             </div>
           </div>
 
