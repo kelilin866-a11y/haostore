@@ -34,6 +34,12 @@ type QueryResult = {
   }[];
 };
 
+type OrderQueryFormProps = {
+  contactPlaceholder: string;
+  buttonText: string;
+  helpText: string;
+};
+
 function getOrderStatusText(order: QueryResult) {
   if (order.deliveryStatus === "delivered") {
     return "已发货";
@@ -58,7 +64,11 @@ function getOrderStatusVariant(order: QueryResult) {
   return "warning" as const;
 }
 
-export function OrderQueryForm() {
+export function OrderQueryForm({
+  contactPlaceholder,
+  buttonText,
+  helpText,
+}: OrderQueryFormProps) {
   const [orderNo, setOrderNo] = useState("");
   const [contact, setContact] = useState("");
   const [message, setMessage] = useState("");
@@ -122,15 +132,21 @@ export function OrderQueryForm() {
                 id="contact"
                 value={contact}
                 onChange={(event) => setContact(event.target.value)}
-                placeholder="下单时填写的联系方式"
+                placeholder={contactPlaceholder}
               />
             </div>
             <Button variant="deal" type="submit" disabled={isLoading}>
-              {isLoading ? "查询中" : "查询"}
+              {isLoading ? "查询中..." : buttonText}
             </Button>
           </CardContent>
         </form>
       </Card>
+
+      {helpText ? (
+        <div className="rounded-md border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-500">
+          {helpText}
+        </div>
+      ) : null}
 
       {message ? (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">

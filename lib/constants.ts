@@ -18,7 +18,8 @@ export const siteConfig = {
   customerEmail: process.env.CUSTOMER_SERVICE_EMAIL || "请配置客服邮箱",
   paymentNotice: process.env.MANUAL_PAYMENT_NOTICE || defaultPaymentNotice,
   afterSalesNotice:
-    process.env.AFTER_SALES_NOTICE || "如有问题，请提供订单号联系客服核验。",
+    process.env.AFTER_SALES_NOTICE ||
+    "如有问题，请提供订单号联系客服核验。",
   productDefaultNotice:
     process.env.PRODUCT_DEFAULT_NOTICE ||
     "请在购买前确认用途合规。\n支付状态确认后，发货仍由后台管理员人工确认。",

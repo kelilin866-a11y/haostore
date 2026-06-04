@@ -97,24 +97,27 @@ export default async function ProductDetailPage({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-accentblue" aria-hidden="true" />
+                  <FileText
+                    className="h-5 w-5 text-accentblue"
+                    aria-hidden="true"
+                  />
                   商品说明
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm leading-7 text-slate-600">
                 <p>{product.description || product.summary || "暂无商品说明。"}</p>
-                <p>
-                  支持 Stripe Checkout 在线支付。支付成功后，系统会通过支付回调确认付款状态。
-                  发货仍由后台管理员人工确认，确认前不会展示任何发货内容。
-                </p>
+                <p>{settings.product_detail_payment_notice}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-warning" aria-hidden="true" />
-                  注意事项
+                  <AlertTriangle
+                    className="h-5 w-5 text-warning"
+                    aria-hidden="true"
+                  />
+                  {settings.product_detail_notice_title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -141,13 +144,17 @@ export default async function ProductDetailPage({
               </CardHeader>
               <CardContent className="grid gap-4 text-sm text-slate-600">
                 <div>
-                  <p className="font-medium text-primary">发货格式</p>
+                  <p className="font-medium text-primary">
+                    {settings.product_detail_delivery_title}
+                  </p>
                   <p className="mt-2 rounded-md bg-slate-50 p-3 font-mono text-xs text-slate-700">
                     {product.deliveryFormat || settings.product_default_delivery}
                   </p>
                 </div>
                 <div>
-                  <p className="font-medium text-primary">售后说明</p>
+                  <p className="font-medium text-primary">
+                    {settings.product_detail_after_sales_title}
+                  </p>
                   <p className="mt-2 leading-6">
                     {product.afterSales || settings.after_sales_notice}
                   </p>

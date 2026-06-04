@@ -13,7 +13,9 @@ export async function Footer() {
           <p className="mt-2 leading-6">{settings.footer_description}</p>
         </div>
         <div>
-          <p className="font-semibold text-primary">快速入口</p>
+          <p className="font-semibold text-primary">
+            {settings.footer_quick_links_title}
+          </p>
           <div className="mt-2 flex flex-col gap-2">
             <Link href="/products" className="hover:text-primary">
               产品中心
@@ -27,7 +29,9 @@ export async function Footer() {
           </div>
         </div>
         <div>
-          <p className="font-semibold text-primary">政策说明</p>
+          <p className="font-semibold text-primary">
+            {settings.footer_policy_title}
+          </p>
           <div className="mt-2 flex flex-col gap-2">
             <Link href="/policy/terms" className="hover:text-primary">
               服务条款

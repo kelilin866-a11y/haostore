@@ -4,6 +4,7 @@ import { ProductCard } from "@/components/site/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -15,43 +16,47 @@ type ProductsPageProps = {
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const selectedCategory = searchParams?.category;
-  const categories = await prisma.category.findMany({
-    where: { isActive: true },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-  });
-
-  const products = await prisma.product.findMany({
-    where: {
-      status: "active",
-      ...(selectedCategory
-        ? {
-            category: {
-              slug: selectedCategory,
-            },
-          }
-        : {}),
-    },
-    include: {
-      category: true,
-      variants: {
-        where: { status: "active" },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  const [categories, products, settings] = await Promise.all([
+    prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.product.findMany({
+      where: {
+        status: "active",
+        ...(selectedCategory
+          ? {
+              category: {
+                slug: selectedCategory,
+              },
+            }
+          : {}),
       },
-      inventoryItems: {
-        where: { status: "available" },
-        select: { id: true },
+      include: {
+        category: true,
+        variants: {
+          where: { status: "active" },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        },
+        inventoryItems: {
+          where: { status: "available" },
+          select: { id: true },
+        },
       },
-    },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-  });
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    }),
+    getSiteSettings(),
+  ]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="mb-8">
         <p className="text-sm font-semibold text-accentblue">产品中心</p>
-        <h1 className="mt-2 text-3xl font-bold text-primary">虚拟商品列表</h1>
+        <h1 className="mt-2 text-3xl font-bold text-primary">
+          {settings.products_page_title}
+        </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-          当前商品从数据库读取。支持 Stripe Checkout 在线支付，支付成功后系统通过 webhook 自动确认付款状态，发货仍由后台管理员人工确认。
+          {settings.products_page_description}
         </p>
       </div>
 
@@ -82,7 +87,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           <CardContent className="p-8 text-center">
             <p className="text-lg font-semibold text-primary">暂无可售商品</p>
             <p className="mt-2 text-sm text-slate-500">
-              请先在后台准备商品分类、商品和库存，或稍后再查看商品列表。
+              {settings.product_empty_text}
             </p>
           </CardContent>
         </Card>
@@ -98,6 +103,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             return (
               <ProductCard
                 key={product.id}
+                buyButtonText={settings.product_card_buy_button_text}
                 product={{
                   slug: product.slug,
                   title: product.title,

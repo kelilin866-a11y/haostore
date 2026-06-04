@@ -1,42 +1,33 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { getSiteSettings } from "@/lib/site-settings";
 
-const terms = [
-  {
-    title: "商品性质",
-    body: "本商城展示的商品为虚拟文本类商品，包括账号类、卡密类和教程类资料。用户购买前应确认商品说明、规格、库存和售后范围。",
-  },
-  {
-    title: "用户责任",
-    body: "用户应自行确认购买需求和使用场景，并遵守相关平台规则、法律法规和服务条款。",
-  },
-  {
-    title: "禁止用途",
-    body: "禁止将商品用于违法违规、欺诈、骚扰、滥发信息或其他侵犯第三方权益的用途。",
-  },
-  {
-    title: "支付说明",
-    body: "当前支持 Stripe Checkout 在线支付。支付成功后系统通过 Stripe webhook 自动确认付款状态，发货仍由后台管理员人工确认。",
-  },
-  {
-    title: "售后说明",
-    body: "如发货内容缺失或格式异常，请提供订单号和联系方式联系客服核验。",
-  },
-];
+export const dynamic = "force-dynamic";
 
-export default function TermsPage() {
+function splitContent(content: string) {
+  return content
+    .split(/\n{2,}/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+export default async function TermsPage() {
+  const settings = await getSiteSettings();
+  const sections = splitContent(settings.terms_page_content);
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <h1 className="text-3xl font-bold text-primary">服务条款</h1>
+      <h1 className="text-3xl font-bold text-primary">
+        {settings.terms_page_title}
+      </h1>
       <p className="mt-3 text-sm leading-6 text-slate-500">
-        以下条款用于说明虚拟商品购买、支付、发货和售后的基础规则，正式上线前可结合实际法律要求继续完善。
+        以下条款用于说明虚拟商品购买、支付、发货和售后的基础规则。
       </p>
       <div className="mt-8 grid gap-4">
-        {terms.map((term) => (
-          <Card key={term.title}>
-            <CardHeader>
-              <CardTitle>{term.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm leading-7 text-slate-600">{term.body}</CardContent>
+        {sections.map((section) => (
+          <Card key={section.slice(0, 40)}>
+            <CardContent className="whitespace-pre-line p-5 text-sm leading-7 text-slate-600">
+              {section}
+            </CardContent>
           </Card>
         ))}
       </div>

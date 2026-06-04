@@ -35,7 +35,13 @@ function getHttpImageUrl(value: string | null | undefined) {
   }
 }
 
-export function ProductCard({ product }: { product: ProductCardValue }) {
+export function ProductCard({
+  product,
+  buyButtonText = "立即购买",
+}: {
+  product: ProductCardValue;
+  buyButtonText?: string;
+}) {
   const productHref = `/products/${encodeURIComponent(product.slug)}`;
   const coverImageUrl = getHttpImageUrl(product.coverImage);
 
@@ -80,7 +86,7 @@ export function ProductCard({ product }: { product: ProductCardValue }) {
       </CardContent>
       <CardFooter>
         <Button variant="deal" className="w-full" asChild>
-          <Link href={productHref}>立即购买</Link>
+          <Link href={productHref}>{buyButtonText}</Link>
         </Button>
       </CardFooter>
     </Card>
