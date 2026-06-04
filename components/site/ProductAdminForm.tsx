@@ -95,15 +95,20 @@ function setInputValue(id: string, value: string, shouldOverwrite = true) {
       element instanceof HTMLTextAreaElement
     )
   ) {
-    return;
+    return false;
   }
 
   if (!shouldOverwrite && element.value.trim()) {
-    return;
+    return false;
   }
 
   element.value = value;
   element.dispatchEvent(new Event("input", { bubbles: true }));
+  return true;
+}
+
+function isImageUrl(value: string) {
+  return /^https?:\/\/.+/i.test(value.trim());
 }
 
 export function ProductAdminForm({
@@ -114,11 +119,14 @@ export function ProductAdminForm({
   product,
 }: ProductAdminFormProps) {
   const variantRows = getVariantRows(product);
+  const initialCoverImage = product?.coverImage ?? "";
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState(initialCoverImage);
   const [uploadState, setUploadState] = useState<UploadState>({
     status: "idle",
     message: "",
   });
+  const showCoverPreview = isImageUrl(coverImagePreview);
 
   function getAutoFillInput() {
     const categoryId = getInputValue("categoryId");
@@ -165,6 +173,15 @@ export function ProductAdminForm({
     fillDescription(false);
   }
 
+  function clearCoverImage() {
+    setInputValue("coverImage", "");
+    setCoverImagePreview("");
+    setUploadState({
+      status: "idle",
+      message: "已清空商品主图，保存商品后生效。",
+    });
+  }
+
   async function handleImageUpload(file: File | undefined) {
     if (!file) {
       return;
@@ -172,7 +189,7 @@ export function ProductAdminForm({
 
     const formData = new FormData();
     formData.append("file", file);
-    setUploadState({ status: "uploading", message: "图片上传中..." });
+    setUploadState({ status: "uploading", message: "上传中..." });
 
     try {
       const response = await fetch("/api/admin/uploads/product-image", {
@@ -194,6 +211,7 @@ export function ProductAdminForm({
       }
 
       setInputValue("coverImage", data.url);
+      setCoverImagePreview(data.url);
       setUploadState({
         status: "success",
         message: "图片上传成功，已填入商品主图 URL。保存商品后生效。",
@@ -279,12 +297,16 @@ export function ProductAdminForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="coverImage">商品主图/占位图</Label>
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
                 <Input
                   id="coverImage"
                   name="coverImage"
-                  defaultValue={product?.coverImage ?? ""}
+                  defaultValue={initialCoverImage}
                   placeholder="图片 URL 或占位说明"
+                  onChange={(event) => {
+                    setCoverImagePreview(event.target.value);
+                    setUploadState({ status: "idle", message: "" });
+                  }}
                 />
                 <Button
                   type="button"
@@ -293,6 +315,14 @@ export function ProductAdminForm({
                   onClick={() => imageInputRef.current?.click()}
                 >
                   {uploadState.status === "uploading" ? "上传中..." : "上传图片"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploadState.status === "uploading" && !coverImagePreview}
+                  onClick={clearCoverImage}
+                >
+                  清空图片
                 </Button>
               </div>
               <input
@@ -315,6 +345,22 @@ export function ProductAdminForm({
                 >
                   {uploadState.message}
                 </p>
+              ) : null}
+              {showCoverPreview ? (
+                <div className="overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={coverImagePreview}
+                    alt="商品主图预览"
+                    className="h-48 w-full object-cover"
+                    onError={() =>
+                      setUploadState({
+                        status: "error",
+                        message: "图片预览加载失败，请检查 URL 是否可访问。",
+                      })
+                    }
+                  />
+                </div>
               ) : null}
             </div>
           </div>
