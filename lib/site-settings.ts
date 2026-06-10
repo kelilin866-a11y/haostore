@@ -3,6 +3,7 @@ import { siteConfig } from "@/lib/constants";
 
 type SettingGroup =
   | "basic"
+  | "home_hero"
   | "home"
   | "products"
   | "order_query"
@@ -49,6 +50,7 @@ const defaultAfterSalesContent = `【售后条件】
 
 export const settingGroups: Array<{ key: SettingGroup; title: string }> = [
   { key: "basic", title: "基础配置" },
+  { key: "home_hero", title: "首页 Hero 配置" },
   { key: "home", title: "首页配置" },
   { key: "products", title: "产品配置" },
   { key: "order_query", title: "订单查询配置" },
@@ -157,20 +159,52 @@ export const editableSettingFields = [
   },
   {
     key: "home_hero_title",
-    label: "首页主标题",
+    label: "首页 Hero 主标题",
     description: "首页 Hero 区主标题。",
     inputType: "input",
-    group: "home",
-    fallback: "虚拟商品自动发货商城",
+    group: "home_hero",
+    fallback: "购买属于你的高质量产品",
   },
   {
     key: "home_hero_description",
-    label: "首页主介绍文案",
+    label: "首页 Hero 描述文案",
     description: "首页 Hero 区介绍文案。",
     inputType: "textarea",
-    group: "home",
+    group: "home_hero",
     fallback:
-      "面向账号类、卡密类和教程类文本商品的无登录、无购物车商城。支持 Stripe Checkout 在线支付，支付成功后由 webhook 确认付款状态，后台管理员再人工确认发货。",
+      "精选账号类、卡密类和教程资料，支持在线下单，支付后由后台确认发货，购买流程清晰可查。",
+  },
+  {
+    key: "home_hero_primary_button_text",
+    label: "首页 Hero 主按钮文字",
+    description: "首页 Hero 区主按钮展示文案。",
+    inputType: "input",
+    group: "home_hero",
+    fallback: "查看商品",
+  },
+  {
+    key: "home_hero_primary_button_href",
+    label: "首页 Hero 主按钮链接",
+    description: "首页 Hero 区主按钮跳转链接，例如 /products。",
+    inputType: "input",
+    group: "home_hero",
+    fallback: "/products",
+  },
+  {
+    key: "home_hero_secondary_button_text",
+    label: "首页 Hero 次按钮文字",
+    description: "首页 Hero 区次按钮展示文案。",
+    inputType: "input",
+    group: "home_hero",
+    fallback: "查询订单",
+  },
+  {
+    key: "home_hero_secondary_button_href",
+    label: "首页 Hero 次按钮链接",
+    description: "首页 Hero 区次按钮跳转链接，例如 /order/query。",
+    inputType: "input",
+    group: "home_hero",
+    fallback: "/order/query",
   },
   {
     key: "home_primary_button_text",

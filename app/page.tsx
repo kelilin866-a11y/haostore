@@ -27,14 +27,6 @@ import { getSiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
-const heroConfig = {
-  title: "购买属于你的高质量产品",
-  description:
-    "精选账号类、卡密类和教程资料，支持在线下单，支付后由后台确认发货，购买流程清晰可查。",
-  primaryButton: { label: "查看商品", href: "/products" },
-  secondaryButton: { label: "查询订单", href: "/order/query" },
-};
-
 const categoryMeta = [
   {
     hints: ["telegram", "tg", "电报"],
@@ -217,10 +209,10 @@ export default async function HomePage() {
 
         <div className="relative mx-auto flex max-w-5xl flex-col items-center text-center">
           <h1 className="max-w-4xl text-balance text-4xl font-bold leading-tight tracking-normal text-[#0F172A] sm:text-5xl lg:text-6xl">
-            {heroConfig.title}
+            {settings.home_hero_title}
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#64748B] sm:text-lg">
-            {heroConfig.description}
+            {settings.home_hero_description}
           </p>
 
           {heroCategories.length > 0 ? (
@@ -243,8 +235,8 @@ export default async function HomePage() {
               className="bg-[#14B8A6] px-8 text-white shadow-lg shadow-teal-100 hover:bg-[#0F9F93]"
               asChild
             >
-              <Link href={heroConfig.primaryButton.href}>
-                {heroConfig.primaryButton.label}
+              <Link href={settings.home_hero_primary_button_href}>
+                {settings.home_hero_primary_button_text}
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </Button>
@@ -254,8 +246,8 @@ export default async function HomePage() {
               className="border-[#1E3A8A] bg-white px-8 text-[#1E3A8A] hover:bg-[#EFF6FF]"
               asChild
             >
-              <Link href={heroConfig.secondaryButton.href}>
-                {heroConfig.secondaryButton.label}
+              <Link href={settings.home_hero_secondary_button_href}>
+                {settings.home_hero_secondary_button_text}
               </Link>
             </Button>
           </div>
