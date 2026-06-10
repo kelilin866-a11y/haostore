@@ -180,7 +180,7 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
         <Label htmlFor="variantId">规格选择</Label>
         <select
           id="variantId"
-          className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="h-11 w-full rounded-md border border-[#E2E8F0] bg-white px-3 text-sm text-[#0F172A] focus:border-[#14B8A6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           value={variantId}
           onChange={(event) => {
             const nextVariant = variants.find(
@@ -204,6 +204,19 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
             </option>
           ))}
         </select>
+        {selectedVariant ? (
+          <div className="rounded-xl border border-[#14B8A6] bg-[#ECFDF5] p-3 text-sm text-[#047857]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold">{selectedVariant.name}</span>
+              <span>{formatCurrency(selectedVariant.price)}</span>
+              <span>
+                {selectedVariant.availableStock > 0
+                  ? `库存 ${selectedVariant.availableStock}`
+                  : "已售罄"}
+              </span>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-2">
@@ -215,6 +228,7 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
           max={Math.max(selectedStock, 1)}
           value={quantity}
           disabled={!canPurchaseSelectedVariant}
+          className="h-11 border-[#E2E8F0] bg-white focus-visible:ring-2 focus-visible:ring-teal-100"
           onChange={(event) =>
             setQuantity(clampQuantity(Number(event.target.value), selectedStock))
           }
@@ -228,6 +242,7 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
           value={contact}
           onChange={(event) => setContact(event.target.value)}
           placeholder="邮箱、Telegram、手机号或微信号"
+          className="h-11 border-[#E2E8F0] bg-white focus-visible:ring-2 focus-visible:ring-teal-100"
         />
       </div>
 
@@ -235,7 +250,7 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
         <Label htmlFor="paymentMethod">支付方式</Label>
         <select
           id="paymentMethod"
-          className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="h-11 w-full rounded-md border border-[#E2E8F0] bg-white px-3 text-sm text-[#0F172A] focus:border-[#14B8A6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           value={paymentMethod}
           onChange={(event) => setPaymentMethod(event.target.value)}
           disabled={!canPurchaseSelectedVariant}
@@ -248,10 +263,10 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
         </select>
       </div>
 
-      <div className="rounded-md bg-slate-50 p-4">
+      <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-slate-500">价格合计</span>
-          <span className="text-xl font-semibold text-primary">
+          <span className="text-[#64748B]">价格合计</span>
+          <span className="text-2xl font-bold text-[#1E3A8A]">
             {formatCurrency(total)}
           </span>
         </div>
@@ -265,9 +280,8 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
 
       <Button
         type="submit"
-        variant="deal"
         size="lg"
-        className="w-full"
+        className="w-full bg-[#14B8A6] text-white hover:bg-[#0F9F93]"
         disabled={isSubmitting || !canPurchaseSelectedVariant}
       >
         {!hasPurchasableVariant
@@ -276,7 +290,7 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
             ? "正在创建订单"
             : "立即购买"}
       </Button>
-      <p className="text-xs leading-5 text-slate-500">
+      <p className="text-xs leading-5 text-[#64748B]">
         支持 Stripe Checkout 在线支付。支付成功后，系统会通过支付回调确认付款状态。发货仍由后台管理员人工确认，确认前不会展示任何发货内容。
       </p>
     </form>
