@@ -232,28 +232,6 @@ export default async function ProductDetailPage({
 
               <Separator className="bg-[#E2E8F0]" />
 
-              <div className="grid gap-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 text-xs text-[#64748B]">
-                {variants.map((variant) => (
-                  <div
-                    key={variant.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-3 py-2"
-                  >
-                    <span className="font-medium text-[#0F172A]">
-                      {variant.name}
-                    </span>
-                    <span className="font-semibold text-[#1E3A8A]">
-                      {formatCurrency(variant.price)}
-                    </span>
-                    <span>
-                      {variant.availableStock > 0
-                        ? `库存 ${variant.availableStock}`
-                        : "已售罄"}
-                    </span>
-                    <span className="font-mono">{variant.sku}</span>
-                  </div>
-                ))}
-              </div>
-
               <OrderForm productId={product.id} variants={variants} />
             </CardContent>
           </Card>

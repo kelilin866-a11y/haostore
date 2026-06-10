@@ -206,9 +206,16 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
         </select>
         {selectedVariant ? (
           <div className="rounded-xl border border-[#14B8A6] bg-[#ECFDF5] p-3 text-sm text-[#047857]">
+            <p className="mb-2 text-xs font-semibold text-[#047857]">
+              已选规格
+            </p>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold">{selectedVariant.name}</span>
-              <span>{formatCurrency(selectedVariant.price)}</span>
+              <span className="font-semibold text-[#0F172A]">
+                {selectedVariant.name}
+              </span>
+              <span className="font-semibold text-[#1E3A8A]">
+                {formatCurrency(selectedVariant.price)}
+              </span>
               <span>
                 {selectedVariant.availableStock > 0
                   ? `库存 ${selectedVariant.availableStock}`
