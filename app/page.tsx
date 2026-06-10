@@ -31,21 +31,6 @@ const heroConfig = {
   title: "购买属于你的高质量产品",
   description:
     "精选账号类、卡密类和教程资料，支持在线下单，支付后由后台确认发货，购买流程清晰可查。",
-  categories: [
-    { label: "Instagram", href: "/products?category=instagram" },
-    { label: "Facebook", href: "/products?category=facebook" },
-    { label: "Twitter", href: "/products?category=twitter-x" },
-    { label: "Discord", href: "/products?category=discord" },
-    { label: "Telegram", href: "/products?category=telegram" },
-    { label: "TikTok", href: "/products?category=tiktok" },
-    { label: "Google系列", href: "/products?category=google" },
-    { label: "Apple ID", href: "/products?category=apple-id" },
-    { label: "AI账号(ChatGPT...)", href: "/products?category=ai-account" },
-    { label: "Snapchat", href: "/products?category=snapchat" },
-    { label: "Amazon", href: "/products?category=amazon" },
-    { label: "Github", href: "/products?category=github" },
-    { label: "邮箱账户", href: "/products?category=email-account" },
-  ],
   primaryButton: { label: "查看商品", href: "/products" },
   secondaryButton: { label: "查询订单", href: "/order/query" },
 };
@@ -221,6 +206,9 @@ export default async function HomePage() {
       take: 6,
     }),
   ]);
+  const heroCategories = categories
+    .filter((category) => category.slug && category._count.products > 0)
+    .slice(0, 12);
 
   return (
     <main className="overflow-hidden bg-[#F8FAFC] text-[#0F172A]">
@@ -235,17 +223,19 @@ export default async function HomePage() {
             {heroConfig.description}
           </p>
 
-          <div className="mt-8 flex max-w-4xl flex-wrap justify-center gap-2.5">
-            {heroConfig.categories.map((category) => (
-              <Link
-                key={category.label}
-                href={category.href}
-                className="rounded-full border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-medium text-[#1E3A8A] shadow-sm transition hover:border-[#14B8A6] hover:text-[#0F9F93]"
-              >
-                {category.label}
-              </Link>
-            ))}
-          </div>
+          {heroCategories.length > 0 ? (
+            <div className="mt-8 flex max-w-4xl flex-wrap justify-center gap-2.5">
+              {heroCategories.map((category) => (
+                <Link
+                  key={category.id}
+                  href={getCategoryHref(category.slug)}
+                  className="rounded-full border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-medium text-[#1E3A8A] shadow-sm transition hover:border-[#14B8A6] hover:text-[#0F9F93]"
+                >
+                  {category.name}
+                </Link>
+              ))}
+            </div>
+          ) : null}
 
           <div className="mt-9 flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
             <Button
