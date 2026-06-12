@@ -83,21 +83,35 @@ export function getNezhaConfigIssues() {
   if (!nezhaPayConfig.notifyUrl) {
     issues.push("NEZHA_PAY_NOTIFY_URL 未配置");
   }
-  if (nezhaPayConfig.privateKey && !canParsePrivateKey(nezhaPayConfig.privateKey)) {
-    issues.push("NEZHA_PAY_PRIVATE_KEY 格式错误");
-  }
-  if (
-    nezhaPayConfig.platformPublicKey &&
-    !canParsePublicKey(nezhaPayConfig.platformPublicKey)
-  ) {
-    issues.push("NEZHA_PAY_PLATFORM_PUBLIC_KEY 格式错误");
-  }
 
   return issues;
 }
 
+export function getNezhaDisplayDiagnostics() {
+  return {
+    nezhaEnabled: nezhaPayConfig.enabled,
+    hasPid: Boolean(nezhaPayConfig.pid),
+    hasPrivateKey: Boolean(nezhaPayConfig.privateKey),
+    hasPlatformPublicKey: Boolean(nezhaPayConfig.platformPublicKey),
+    hasReturnUrl: Boolean(nezhaPayConfig.returnUrl),
+    hasNotifyUrl: Boolean(nezhaPayConfig.notifyUrl),
+    privateKeyParsed: nezhaPayConfig.privateKey
+      ? canParsePrivateKey(nezhaPayConfig.privateKey)
+      : false,
+  };
+}
+
 export function isNezhaPaymentEnabled() {
-  return nezhaPayConfig.enabled && getNezhaConfigIssues().length === 0;
+  const diagnostics = getNezhaDisplayDiagnostics();
+
+  console.info("[nezha] storefront display diagnostics", diagnostics);
+
+  return (
+    diagnostics.nezhaEnabled &&
+    diagnostics.hasPid &&
+    diagnostics.hasPrivateKey &&
+    diagnostics.hasPlatformPublicKey
+  );
 }
 
 export function normalizePemKey(value: string) {

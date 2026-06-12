@@ -27,9 +27,6 @@ const paymentMethods = [
     value: "gateway_reserved",
     label: process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_NAME || "Stripe Checkout 在线支付",
   },
-  { value: "manual_alipay", label: "支付宝备用通道" },
-  { value: "manual_wechat", label: "微信备用通道" },
-  { value: "manual_usdt", label: "USDT 备用通道" },
 ];
 
 const nezhaPaymentMethods = [
