@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         ok: true,
         orderNo,
-        redirectUrl: payment.checkoutUrl,
+        redirectUrl: `/order/${createdOrder.orderNo}/pay`,
       });
     }
   } catch (error) {

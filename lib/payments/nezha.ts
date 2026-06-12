@@ -297,6 +297,16 @@ function getCreateUrl() {
   return new URL("/api/pay/create", nezhaPayConfig.gateway).toString();
 }
 
+function getNezhaReturnUrl(orderNo: string) {
+  const baseUrl =
+    nezhaPayConfig.returnUrl || getAbsoluteUrl(`/payment/result`);
+  const url = new URL(baseUrl);
+
+  url.searchParams.set("orderNo", orderNo);
+
+  return url.toString();
+}
+
 export async function createNezhaPayment(input: NezhaCreateInput) {
   const issues = getNezhaConfigIssues();
   const channel = getNezhaPaymentType(input.paymentMethod);
@@ -323,9 +333,7 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
     type: channel,
     out_trade_no: input.orderNo,
     notify_url: nezhaPayConfig.notifyUrl,
-    return_url:
-      nezhaPayConfig.returnUrl ||
-      getAbsoluteUrl(`/payment/result?orderNo=${input.orderNo}`),
+    return_url: getNezhaReturnUrl(input.orderNo),
     name: safeTruncateByBytes(input.productName, 127),
     money: decimalToYuan(input.amount),
     clientip: input.clientIp || "127.0.0.1",

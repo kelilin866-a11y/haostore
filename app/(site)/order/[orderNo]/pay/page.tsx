@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { PaymentCheckoutButton } from "@/components/site/PaymentCheckoutButton";
+import { NezhaPaymentPanel } from "@/components/site/NezhaPaymentPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,9 +31,6 @@ const paymentMethodLabels: Record<string, string> = {
   nezha_wxpay: "哪吒微信支付",
 };
 
-const currentPaymentNotice =
-  "支持 Stripe Checkout 在线支付。支付成功后系统通过 Stripe webhook 自动确认付款状态。发货仍由后台管理员人工确认，支付成功前不会展示任何发货内容。若支付状态暂未更新，请稍后刷新或通过订单查询查看。";
-
 async function getSettings() {
   const settings = await getSiteSettings();
 
@@ -43,6 +41,21 @@ async function getSettings() {
   };
 }
 
+function isNezhaPaymentMethod(method: string) {
+  return method === "nezha_alipay" || method === "nezha_wxpay";
+}
+
+function getNezhaPayInfo(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const payload = value as Record<string, unknown>;
+  const payInfo = payload.pay_info;
+
+  return typeof payInfo === "string" && payInfo ? payInfo : null;
+}
+
 export default async function PayPage({
   params,
   searchParams,
@@ -50,7 +63,7 @@ export default async function PayPage({
   params: { orderNo: string };
   searchParams?: { payment?: string };
 }) {
-  const [order, settings] = await Promise.all([
+  const [order, latestNezhaPaymentLog, settings] = await Promise.all([
     prisma.order.findUnique({
       where: { orderNo: params.orderNo },
       include: {
@@ -62,6 +75,15 @@ export default async function PayPage({
         },
       },
     }),
+    prisma.paymentLog.findFirst({
+      where: {
+        orderNo: params.orderNo,
+        provider: "nezha",
+        event: "create",
+        success: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
     getSettings(),
   ]);
 
@@ -70,12 +92,16 @@ export default async function PayPage({
   }
 
   const isDelivered = order.deliveryStatus === "delivered";
+  const isNezhaPayment = isNezhaPaymentMethod(order.paymentMethod);
   const isOnlinePaymentAvailable = isStripePaymentEnabled();
-  const canUseOnlinePayment =
-    isOnlinePaymentAvailable && !isDelivered && order.paymentStatus !== "paid";
-  const displayedPaymentMethod = canUseOnlinePayment
-    ? paymentGatewayConfig.gatewayName
-    : paymentMethodLabels[order.paymentMethod] || order.paymentMethod;
+  const canUseStripePayment =
+    order.paymentMethod === "gateway_reserved" &&
+    isOnlinePaymentAvailable &&
+    !isDelivered &&
+    order.paymentStatus !== "paid";
+  const displayedPaymentMethod =
+    paymentMethodLabels[order.paymentMethod] || order.paymentMethod;
+  const nezhaPayInfo = getNezhaPayInfo(latestNezhaPaymentLog?.responsePayload);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
@@ -89,7 +115,9 @@ export default async function PayPage({
         <p className="mt-3 text-sm leading-6 text-slate-500">
           {isDelivered
             ? "支付状态已确认并完成发货，请及时保存发货内容。"
-            : isOnlinePaymentAvailable
+            : isNezhaPayment
+              ? "请在本站支付等待页打开支付页面。支付完成后系统会自动确认付款状态，发货仍由后台管理员人工确认。"
+              : isOnlinePaymentAvailable
               ? settings.paymentNotice
               : "在线支付配置暂不可用，请稍后刷新或通过订单查询查看支付状态。发货仍由后台管理员人工确认。"}
         </p>
@@ -200,7 +228,28 @@ export default async function PayPage({
               </p>
             </CardContent>
           </Card>
-        ) : canUseOnlinePayment ? (
+        ) : isNezhaPayment ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-deal" aria-hidden="true" />
+                支付等待
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <NezhaPaymentPanel
+                orderNo={order.orderNo}
+                payInfo={nezhaPayInfo}
+                paymentLabel={displayedPaymentMethod}
+                initialPaymentStatus={order.paymentStatus}
+                initialOrderStatus={order.orderStatus}
+                initialDeliveryStatus={order.deliveryStatus}
+                initialPaidAtText={formatDateTime(order.paidAt)}
+                initialDeliveredAtText={formatDateTime(order.deliveredAt)}
+              />
+            </CardContent>
+          </Card>
+        ) : canUseStripePayment ? (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
