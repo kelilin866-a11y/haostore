@@ -83,6 +83,15 @@ export function getNezhaConfigIssues() {
   if (!nezhaPayConfig.notifyUrl) {
     issues.push("NEZHA_PAY_NOTIFY_URL 未配置");
   }
+  if (nezhaPayConfig.privateKey && !canParsePrivateKey(nezhaPayConfig.privateKey)) {
+    issues.push("NEZHA_PAY_PRIVATE_KEY 格式错误");
+  }
+  if (
+    nezhaPayConfig.platformPublicKey &&
+    !canParsePublicKey(nezhaPayConfig.platformPublicKey)
+  ) {
+    issues.push("NEZHA_PAY_PLATFORM_PUBLIC_KEY 格式错误");
+  }
 
   return issues;
 }
@@ -92,7 +101,66 @@ export function isNezhaPaymentEnabled() {
 }
 
 export function normalizePemKey(value: string) {
-  return value.replace(/\\n/g, "\n").trim();
+  return value
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\\n/g, "\n")
+    .trim();
+}
+
+class NezhaKeyFormatError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NezhaKeyFormatError";
+  }
+}
+
+function createNezhaPrivateKey() {
+  try {
+    return crypto.createPrivateKey(normalizePemKey(nezhaPayConfig.privateKey));
+  } catch {
+    throw new NezhaKeyFormatError(
+      "哪吒支付商户私钥格式错误，请检查 NEZHA_PAY_PRIVATE_KEY",
+    );
+  }
+}
+
+function createNezhaPublicKey() {
+  try {
+    return crypto.createPublicKey(
+      normalizePemKey(nezhaPayConfig.platformPublicKey),
+    );
+  } catch {
+    throw new NezhaKeyFormatError(
+      "哪吒支付平台公钥格式错误，请检查 NEZHA_PAY_PLATFORM_PUBLIC_KEY",
+    );
+  }
+}
+
+function canParsePrivateKey(value: string) {
+  try {
+    crypto.createPrivateKey(normalizePemKey(value));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function canParsePublicKey(value: string) {
+  try {
+    crypto.createPublicKey(normalizePemKey(value));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getSafeSignDebugPayload(params: Record<string, unknown>) {
+  return {
+    privateKeyParsed: canParsePrivateKey(nezhaPayConfig.privateKey),
+    signContent: buildSignContent(params),
+    signParamKeys: getSignEntries(params).map(([key]) => key),
+  };
 }
 
 function getSignEntries(params: Record<string, unknown>) {
@@ -127,7 +195,7 @@ export function signNezhaParams(params: Record<string, unknown>) {
   signer.update(signContent);
   signer.end();
 
-  return signer.sign(normalizePemKey(nezhaPayConfig.privateKey), "base64");
+  return signer.sign(createNezhaPrivateKey(), "base64");
 }
 
 export function verifyNezhaParams(params: Record<string, unknown>) {
@@ -143,11 +211,7 @@ export function verifyNezhaParams(params: Record<string, unknown>) {
     verifier.update(buildSignContent(params));
     verifier.end();
 
-    return verifier.verify(
-      normalizePemKey(nezhaPayConfig.platformPublicKey),
-      sign,
-      "base64",
-    );
+    return verifier.verify(createNezhaPublicKey(), sign, "base64");
   } catch (error) {
     console.error("[nezha] signature verification failed", {
       error: error instanceof Error ? error.message : error,
@@ -269,15 +333,26 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
       orderNo: input.orderNo,
       channel,
       event: "create",
-      requestPayload: params,
+      requestPayload: getSafeSignDebugPayload(params),
       success: false,
-      message: "哪吒支付请求签名失败",
+      message:
+        error instanceof NezhaKeyFormatError
+          ? error.message
+          : "哪吒支付请求签名失败",
     });
     console.error("[nezha] create request signing failed", {
       orderNo: input.orderNo,
+      privateKeyParsed: canParsePrivateKey(nezhaPayConfig.privateKey),
+      signParamKeys: getSignEntries(params).map(([key]) => key),
       error: message,
     });
-    return { ok: false, message: "哪吒支付签名失败，请检查商户私钥配置" };
+    return {
+      ok: false,
+      message:
+        error instanceof NezhaKeyFormatError
+          ? error.message
+          : "哪吒支付签名失败，请检查商户私钥配置",
+    };
   }
 
   let responsePayload: Record<string, unknown>;
