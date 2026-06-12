@@ -2,6 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { PaymentMethod, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
+import {
+  createNezhaPayment,
+  isNezhaPaymentCode,
+  nezhaPaymentMethods,
+} from "@/lib/payments/nezha";
 
 type OrderBody = {
   productId?: unknown;
@@ -16,6 +21,7 @@ const allowedPaymentMethods = new Set<string>([
   PaymentMethod.manual_wechat,
   PaymentMethod.manual_usdt,
   PaymentMethod.gateway_reserved,
+  ...nezhaPaymentMethods,
 ]);
 const invalidContactMessage =
   "请输入有效联系方式，例如邮箱、Telegram、手机号或微信号";
@@ -149,7 +155,7 @@ export async function POST(request: NextRequest) {
   const orderNo = await generateUniqueOrderNo();
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const createdOrder = await prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
           orderNo,
@@ -177,7 +183,30 @@ export async function POST(request: NextRequest) {
           subtotal,
         },
       });
+
+      return order;
     });
+
+    if (isNezhaPaymentCode(paymentMethod)) {
+      const payment = await createNezhaPayment({
+        orderId: createdOrder.id,
+        orderNo: createdOrder.orderNo,
+        productName: `${product.title} - ${variant.name}`,
+        amount: createdOrder.totalAmount,
+        clientIp: getCustomerIp(request),
+        paymentMethod,
+      });
+
+      if (!payment.ok || !payment.checkoutUrl) {
+        return jsonError(payment.message || "哪吒支付创建失败，请稍后重试", 502);
+      }
+
+      return NextResponse.json({
+        ok: true,
+        orderNo,
+        redirectUrl: payment.checkoutUrl,
+      });
+    }
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

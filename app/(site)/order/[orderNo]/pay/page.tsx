@@ -26,6 +26,8 @@ const paymentMethodLabels: Record<string, string> = {
   manual_wechat: "微信备用通道",
   manual_usdt: "USDT 备用通道",
   gateway_reserved: paymentGatewayConfig.gatewayName,
+  nezha_alipay: "哪吒支付宝",
+  nezha_wxpay: "哪吒微信支付",
 };
 
 const currentPaymentNotice =

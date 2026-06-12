@@ -58,6 +58,8 @@ enum PaymentMethod {
   manual_wechat
   manual_usdt
   gateway_reserved
+  nezha_alipay
+  nezha_wxpay
 }
 
 model AdminUser {
@@ -246,6 +248,26 @@ model PaymentRecord {
 
   @@index([orderId])
   @@index([status])
+}
+
+model PaymentLog {
+  id              String   @id @default(cuid())
+  orderId         String?
+  orderNo         String?
+  provider        String
+  channel         String?
+  event           String
+  requestPayload  Json?
+  responsePayload Json?
+  success         Boolean  @default(false)
+  message         String?
+  createdAt       DateTime @default(now())
+
+  @@index([orderId])
+  @@index([orderNo])
+  @@index([provider])
+  @@index([event])
+  @@index([createdAt])
 }
 
 model ArticleCategory {

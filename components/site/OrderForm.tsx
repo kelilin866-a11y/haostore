@@ -19,6 +19,7 @@ type VariantOption = {
 type OrderFormProps = {
   productId: string;
   variants: VariantOption[];
+  isNezhaPaymentEnabled?: boolean;
 };
 
 const paymentMethods = [
@@ -29,6 +30,11 @@ const paymentMethods = [
   { value: "manual_alipay", label: "支付宝备用通道" },
   { value: "manual_wechat", label: "微信备用通道" },
   { value: "manual_usdt", label: "USDT 备用通道" },
+];
+
+const nezhaPaymentMethods = [
+  { value: "nezha_alipay", label: "哪吒支付宝" },
+  { value: "nezha_wxpay", label: "哪吒微信支付" },
 ];
 
 const invalidContactMessage =
@@ -59,7 +65,11 @@ function clampQuantity(value: number, maxStock: number) {
   return Math.min(Math.floor(value), maxStock);
 }
 
-export function OrderForm({ productId, variants }: OrderFormProps) {
+export function OrderForm({
+  productId,
+  variants,
+  isNezhaPaymentEnabled = false,
+}: OrderFormProps) {
   const router = useRouter();
   const [variantId, setVariantId] = useState(() => getInitialVariantId(variants));
   const [quantity, setQuantity] = useState(1);
@@ -74,6 +84,9 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
   );
   const selectedStock = selectedVariant?.availableStock ?? 0;
   const canPurchaseSelectedVariant = selectedStock > 0;
+  const availablePaymentMethods = isNezhaPaymentEnabled
+    ? [...paymentMethods, ...nezhaPaymentMethods]
+    : paymentMethods;
 
   const total = useMemo(() => {
     return selectedVariant && canPurchaseSelectedVariant
@@ -155,6 +168,11 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
 
       if (!result.ok || !result.redirectUrl) {
         setMessage(result.message || "订单创建失败，请稍后重试");
+        return;
+      }
+
+      if (/^https?:\/\//i.test(result.redirectUrl)) {
+        window.location.href = result.redirectUrl;
         return;
       }
 
@@ -262,7 +280,7 @@ export function OrderForm({ productId, variants }: OrderFormProps) {
           onChange={(event) => setPaymentMethod(event.target.value)}
           disabled={!canPurchaseSelectedVariant}
         >
-          {paymentMethods.map((method) => (
+          {availablePaymentMethods.map((method) => (
             <option key={method.value} value={method.value}>
               {method.label}
             </option>

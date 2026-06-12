@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { prisma } from "@/lib/db";
+import { isNezhaPaymentEnabled } from "@/lib/payments/nezha";
 import { getSiteSettings } from "@/lib/site-settings";
 import { formatCurrency } from "@/lib/utils";
 
@@ -232,7 +233,11 @@ export default async function ProductDetailPage({
 
               <Separator className="bg-[#E2E8F0]" />
 
-              <OrderForm productId={product.id} variants={variants} />
+              <OrderForm
+                productId={product.id}
+                variants={variants}
+                isNezhaPaymentEnabled={isNezhaPaymentEnabled()}
+              />
             </CardContent>
           </Card>
         </aside>
