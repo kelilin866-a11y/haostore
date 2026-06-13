@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Boxes,
+  CreditCard,
   FolderTree,
   FileText,
   Newspaper,
@@ -20,6 +21,7 @@ const modules = [
   { title: "商品分类管理", icon: Tags, href: "/admin/categories" },
   { title: "库存管理", icon: Boxes, href: "/admin/inventory" },
   { title: "订单管理", icon: FileText, href: "/admin/orders" },
+  { title: "支付设置", icon: CreditCard, href: "/admin/payment-settings" },
   { title: "SEO文章管理", icon: Newspaper, href: "/admin/articles" },
   { title: "文章分类管理", icon: FolderTree, href: "/admin/article-categories" },
   { title: "站点设置", icon: Settings, href: "/admin/settings" },
