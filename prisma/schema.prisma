@@ -60,6 +60,8 @@ enum PaymentMethod {
   gateway_reserved
   nezha_alipay
   nezha_wxpay
+  epay_alipay
+  epay_wxpay
 }
 
 model AdminUser {

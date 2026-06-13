@@ -3,6 +3,11 @@ import { PaymentMethod, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
 import {
+  createEpayPayment,
+  epayPaymentMethods,
+  isEpayPaymentCode,
+} from "@/lib/payments/epay";
+import {
   createNezhaPayment,
   isNezhaPaymentCode,
   nezhaPaymentMethods,
@@ -22,6 +27,7 @@ const allowedPaymentMethods = new Set<string>([
   PaymentMethod.manual_usdt,
   PaymentMethod.gateway_reserved,
   ...nezhaPaymentMethods,
+  ...epayPaymentMethods,
 ]);
 const invalidContactMessage =
   "请输入有效联系方式，例如邮箱、Telegram、手机号或微信号";
@@ -205,6 +211,26 @@ export async function POST(request: NextRequest) {
         ok: true,
         orderNo,
         redirectUrl: `/order/${createdOrder.orderNo}/pay`,
+      });
+    }
+
+    if (isEpayPaymentCode(paymentMethod)) {
+      const payment = await createEpayPayment({
+        orderId: createdOrder.id,
+        orderNo: createdOrder.orderNo,
+        productName: `${product.title} - ${variant.name}`,
+        amount: createdOrder.totalAmount,
+        paymentMethod,
+      });
+
+      if (!payment.ok || !payment.checkoutUrl) {
+        return jsonError(payment.message || "epay 支付创建失败，请稍后重试", 502);
+      }
+
+      return NextResponse.json({
+        ok: true,
+        orderNo,
+        redirectUrl: payment.checkoutUrl,
       });
     }
   } catch (error) {

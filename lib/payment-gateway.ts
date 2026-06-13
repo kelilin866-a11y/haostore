@@ -1,6 +1,8 @@
 import Stripe from "stripe";
 import { Prisma } from "@prisma/client";
 
+import { prisma } from "@/lib/db";
+
 export const paymentGatewayConfig = {
   provider: process.env.PAYMENT_PROVIDER || "manual",
   currency: (process.env.PAYMENT_CURRENCY || "cny").toLowerCase(),
@@ -10,16 +12,43 @@ export const paymentGatewayConfig = {
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
 };
 
-export function isStripePaymentEnabled() {
+function parseEnabledFlag(value: string | null | undefined, defaultValue: boolean) {
+  if (value == null || value.trim() === "") {
+    return defaultValue;
+  }
+
+  return value.trim().toLowerCase() === "true";
+}
+
+export async function getStripeEnabledFlag() {
+  const setting = await prisma.setting.findUnique({
+    where: { key: "stripe_enabled" },
+    select: { value: true },
+  });
+
+  return parseEnabledFlag(
+    setting?.value,
+    parseEnabledFlag(process.env.STRIPE_ENABLED, true),
+  );
+}
+
+export async function isStripePaymentEnabled() {
+  const stripeEnabled = await getStripeEnabledFlag();
+
   return (
+    stripeEnabled &&
     paymentGatewayConfig.provider === "stripe" &&
     paymentGatewayConfig.stripeSecretKey.length > 0
   );
 }
 
-export function getStripeCheckoutConfigIssues() {
+export async function getStripeCheckoutConfigIssues() {
   const issues: string[] = [];
+  const stripeEnabled = await getStripeEnabledFlag();
 
+  if (!stripeEnabled) {
+    issues.push("STRIPE_ENABLED / stripe_enabled 已停用");
+  }
   if (paymentGatewayConfig.provider !== "stripe") {
     issues.push("PAYMENT_PROVIDER 必须设置为 stripe");
   }
@@ -48,7 +77,10 @@ export function getStripeCheckoutConfigIssues() {
 }
 
 export function getStripeClient() {
-  if (!isStripePaymentEnabled()) {
+  if (
+    paymentGatewayConfig.provider !== "stripe" ||
+    !paymentGatewayConfig.stripeSecretKey
+  ) {
     throw new Error("Stripe payment gateway is not configured");
   }
 

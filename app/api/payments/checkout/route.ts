@@ -43,8 +43,8 @@ export async function POST(request: Request) {
   if (!orderNo && !orderId) {
     return jsonError("订单号或订单 ID 不能为空");
   }
-  const configIssues = getStripeCheckoutConfigIssues();
-  if (!isStripePaymentEnabled() || configIssues.length > 0) {
+  const configIssues = await getStripeCheckoutConfigIssues();
+  if (!(await isStripePaymentEnabled()) || configIssues.length > 0) {
     console.error("[payments/checkout] Stripe config invalid", configIssues);
     return jsonError(`在线支付配置不完整：${configIssues.join("；")}`, 503);
   }

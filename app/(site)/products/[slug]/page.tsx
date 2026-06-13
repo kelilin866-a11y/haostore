@@ -16,8 +16,12 @@ import {
   getDefaultPaymentProviders,
   getStorefrontPaymentMethods,
 } from "@/lib/payments/methods";
+import { isEpayPaymentEnabled } from "@/lib/payments/epay";
 import { isNezhaPaymentEnabled } from "@/lib/payments/nezha";
-import { paymentGatewayConfig } from "@/lib/payment-gateway";
+import {
+  isStripePaymentEnabled,
+  paymentGatewayConfig,
+} from "@/lib/payment-gateway";
 import { getSiteSettings } from "@/lib/site-settings";
 import { formatCurrency } from "@/lib/utils";
 
@@ -91,6 +95,8 @@ export default async function ProductDetailPage({
   const coverImageUrl = getHttpImageUrl(product.coverImage);
   const paymentMethods = getStorefrontPaymentMethods({
     isNezhaEnabled: await isNezhaPaymentEnabled(),
+    isEpayEnabled: await isEpayPaymentEnabled(),
+    isStripeEnabled: await isStripePaymentEnabled(),
     stripeLabel: paymentGatewayConfig.gatewayName,
     defaultProviders: await getDefaultPaymentProviders(),
   });

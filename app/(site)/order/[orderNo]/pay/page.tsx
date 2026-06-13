@@ -96,7 +96,7 @@ export default async function PayPage({
 
   const isDelivered = order.deliveryStatus === "delivered";
   const isNezhaPayment = isNezhaPaymentMethod(order.paymentMethod);
-  const isOnlinePaymentAvailable = isStripePaymentEnabled();
+  const isOnlinePaymentAvailable = await isStripePaymentEnabled();
   const canUseStripePayment =
     order.paymentMethod === "gateway_reserved" &&
     isOnlinePaymentAvailable &&

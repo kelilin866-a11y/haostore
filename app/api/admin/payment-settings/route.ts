@@ -6,11 +6,17 @@ import { prisma } from "@/lib/db";
 import { normalizePemKey } from "@/lib/payments/nezha";
 
 const editablePaymentSettingKeys = [
+  "stripe_enabled",
   "nezha_pay_enabled",
   "nezha_pay_gateway",
   "nezha_pay_pid",
   "nezha_pay_return_url",
   "nezha_pay_notify_url",
+  "epay_enabled",
+  "epay_gateway",
+  "epay_pid",
+  "epay_notify_url",
+  "epay_return_url",
   "default_alipay_provider",
   "default_wxpay_provider",
 ] as const;
@@ -18,6 +24,7 @@ const editablePaymentSettingKeys = [
 const secretPaymentSettingKeys = [
   "nezha_pay_private_key",
   "nezha_pay_platform_public_key",
+  "epay_key",
 ] as const;
 
 function redirectTo(path: string) {
@@ -65,6 +72,7 @@ export async function POST(request: Request) {
     formData,
     "nezha_pay_platform_public_key",
   );
+  const newEpayKey = getFormString(formData, "epay_key");
 
   if (newPrivateKey && !canParsePrivateKey(newPrivateKey)) {
     return redirectWithError("private-key");
@@ -91,7 +99,11 @@ export async function POST(request: Request) {
 
   for (const key of secretPaymentSettingKeys) {
     const value =
-      key === "nezha_pay_private_key" ? newPrivateKey : newPlatformPublicKey;
+      key === "nezha_pay_private_key"
+        ? newPrivateKey
+        : key === "nezha_pay_platform_public_key"
+          ? newPlatformPublicKey
+          : newEpayKey;
 
     if (!value) {
       continue;
