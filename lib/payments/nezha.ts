@@ -27,6 +27,12 @@ type PaymentLogInput = {
   message?: string | null;
 };
 
+type NezhaQueryResult = {
+  ok: boolean;
+  paid: boolean;
+  message: string;
+};
+
 const nezhaPaymentTypeByMethod: Record<NezhaPaymentCode, NezhaPaymentType> = {
   nezha_alipay: "alipay",
   nezha_wxpay: "wxpay",
@@ -297,6 +303,10 @@ function getCreateUrl() {
   return new URL("/api/pay/create", nezhaPayConfig.gateway).toString();
 }
 
+function getQueryUrl() {
+  return new URL("/api/pay/query", nezhaPayConfig.gateway).toString();
+}
+
 function getNezhaReturnUrl(orderNo: string) {
   const baseUrl =
     nezhaPayConfig.returnUrl || getAbsoluteUrl(`/payment/result`);
@@ -422,7 +432,7 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
   const payType = String(responsePayload.pay_type ?? "");
   const payInfo = String(responsePayload.pay_info ?? "");
 
-  if (code === "0" && payType === "jump" && payInfo) {
+  if (code === "0" && (payType === "jump" || payType === "qrcode") && payInfo) {
     await writePaymentLog({
       orderId: input.orderId,
       orderNo: input.orderNo,
@@ -431,7 +441,10 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
       requestPayload: params,
       responsePayload,
       success: true,
-      message: "哪吒支付跳转创建成功",
+      message:
+        payType === "qrcode"
+          ? "哪吒支付二维码创建成功"
+          : "哪吒支付跳转创建成功",
     });
 
     await prisma.paymentRecord.create({
@@ -484,4 +497,295 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
   });
 
   return { ok: false, message: `哪吒支付创建失败：${message}` };
+}
+
+function isNezhaPaidPayload(payload: Record<string, unknown>) {
+  const status = String(payload.status ?? payload.trade_status ?? "");
+
+  return status === "1" || status === "TRADE_SUCCESS";
+}
+
+function getQueryMoney(payload: Record<string, unknown>) {
+  return String(payload.money ?? payload.amount ?? "");
+}
+
+function getQueryChannel(payload: Record<string, unknown>, fallback: string) {
+  return String(payload.type ?? payload.channel ?? fallback);
+}
+
+function getPaymentMethodFromQuery(
+  payload: Record<string, unknown>,
+  existingMethod: string,
+) {
+  if (isNezhaPaymentCode(existingMethod)) {
+    return existingMethod as PaymentMethod;
+  }
+
+  return getQueryChannel(payload, "") === "wxpay"
+    ? PaymentMethod.nezha_wxpay
+    : PaymentMethod.nezha_alipay;
+}
+
+export async function queryNezhaPaymentAndSync(
+  orderNo: string,
+): Promise<NezhaQueryResult> {
+  const issues = getNezhaConfigIssues();
+  if (issues.length > 0) {
+    await writePaymentLog({
+      orderNo,
+      event: "query",
+      success: false,
+      message: `哪吒支付配置不完整：${issues.join("；")}`,
+    });
+    return {
+      ok: false,
+      paid: false,
+      message: "哪吒支付配置不完整，请联系管理员检查配置",
+    };
+  }
+
+  const order = await prisma.order.findUnique({
+    where: { orderNo },
+    include: {
+      paymentRecords: {
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+
+  if (!order) {
+    await writePaymentLog({
+      orderNo,
+      event: "query",
+      success: false,
+      message: "本地订单不存在",
+    });
+    return { ok: false, paid: false, message: "订单不存在" };
+  }
+
+  if (!isNezhaPaymentCode(order.paymentMethod)) {
+    return {
+      ok: false,
+      paid: false,
+      message: "当前订单不是支付宝或微信支付订单",
+    };
+  }
+
+  if (order.paymentStatus === PaymentStatus.paid) {
+    return {
+      ok: true,
+      paid: true,
+      message: "订单已付款，等待后台发货",
+    };
+  }
+
+  const channel = getNezhaPaymentType(order.paymentMethod);
+  const params = {
+    pid: nezhaPayConfig.pid,
+    out_trade_no: order.orderNo,
+    timestamp: String(Math.floor(Date.now() / 1000)),
+    sign_type: "RSA",
+  };
+  let signedParams: Record<string, string>;
+
+  try {
+    signedParams = {
+      ...params,
+      sign: signNezhaParams(params),
+    };
+  } catch (error) {
+    const message =
+      error instanceof NezhaKeyFormatError
+        ? error.message
+        : "哪吒支付查单签名失败";
+    await writePaymentLog({
+      orderId: order.id,
+      orderNo: order.orderNo,
+      channel,
+      event: "query",
+      requestPayload: getSafeSignDebugPayload(params),
+      success: false,
+      message,
+    });
+    return { ok: false, paid: false, message };
+  }
+
+  let responsePayload: Record<string, unknown>;
+
+  try {
+    const response = await fetch(getQueryUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams(signedParams).toString(),
+    });
+    responsePayload = (await response.json()) as Record<string, unknown>;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "哪吒支付主动查单请求失败";
+    await writePaymentLog({
+      orderId: order.id,
+      orderNo: order.orderNo,
+      channel,
+      event: "query",
+      requestPayload: params,
+      success: false,
+      message,
+    });
+    return {
+      ok: false,
+      paid: false,
+      message: "主动查询支付状态失败，请稍后重试",
+    };
+  }
+
+  if (!verifyNezhaParams(responsePayload)) {
+    await writePaymentLog({
+      orderId: order.id,
+      orderNo: order.orderNo,
+      channel,
+      event: "query",
+      requestPayload: params,
+      responsePayload,
+      success: false,
+      message: "哪吒支付查单响应验签失败",
+    });
+    return {
+      ok: false,
+      paid: false,
+      message: "支付状态响应验签失败，请稍后重试或联系客服",
+    };
+  }
+
+  if (!isNezhaPaidPayload(responsePayload)) {
+    await writePaymentLog({
+      orderId: order.id,
+      orderNo: order.orderNo,
+      channel,
+      event: "query",
+      requestPayload: params,
+      responsePayload,
+      success: true,
+      message: "主动查单暂未检测到付款",
+    });
+    return {
+      ok: true,
+      paid: false,
+      message: "暂未检测到付款，请稍后刷新或通过订单查询查看",
+    };
+  }
+
+  const queryMoney = getQueryMoney(responsePayload);
+  if (moneyToCents(queryMoney) !== moneyToCents(order.totalAmount)) {
+    await writePaymentLog({
+      orderId: order.id,
+      orderNo: order.orderNo,
+      channel,
+      event: "query",
+      requestPayload: params,
+      responsePayload,
+      success: false,
+      message: `主动查单金额不一致：query=${queryMoney}, order=${order.totalAmount.toString()}`,
+    });
+    return {
+      ok: false,
+      paid: false,
+      message: "支付金额与订单金额不一致，请联系客服处理",
+    };
+  }
+
+  const paymentMethod = getPaymentMethodFromQuery(
+    responsePayload,
+    order.paymentMethod,
+  );
+  const transactionId = String(
+    responsePayload.trade_no || responsePayload.api_trade_no || "",
+  );
+  const note = JSON.stringify({
+    provider: "nezha",
+    channel: getQueryChannel(responsePayload, channel),
+    trade_no: responsePayload.trade_no || "",
+    api_trade_no: responsePayload.api_trade_no || "",
+    type: responsePayload.type || "",
+    buyer: responsePayload.buyer || "",
+    endtime: responsePayload.endtime || "",
+    raw: responsePayload,
+    source: "query",
+  });
+
+  await prisma.$transaction(async (tx) => {
+    const latestOrder = await tx.order.findUnique({
+      where: { id: order.id },
+      select: {
+        id: true,
+        paymentStatus: true,
+        orderStatus: true,
+        paidAt: true,
+      },
+    });
+
+    if (!latestOrder || latestOrder.paymentStatus === PaymentStatus.paid) {
+      return;
+    }
+
+    const existingRecord =
+      order.paymentRecords.find((record) => {
+        return (
+          record.transactionId === responsePayload.trade_no ||
+          record.transactionId === responsePayload.api_trade_no
+        );
+      }) || order.paymentRecords[0];
+
+    const paymentRecordData = {
+      method: paymentMethod,
+      amount: order.totalAmount,
+      status: PaymentStatus.paid,
+      transactionId,
+      note,
+    };
+
+    if (existingRecord) {
+      await tx.paymentRecord.update({
+        where: { id: existingRecord.id },
+        data: paymentRecordData,
+      });
+    } else {
+      await tx.paymentRecord.create({
+        data: {
+          orderId: order.id,
+          ...paymentRecordData,
+        },
+      });
+    }
+
+    await tx.order.update({
+      where: { id: order.id },
+      data: {
+        paymentMethod,
+        paymentStatus: PaymentStatus.paid,
+        ...(latestOrder.orderStatus === "completed"
+          ? {}
+          : { orderStatus: "paid" }),
+        paidAt: latestOrder.paidAt || new Date(),
+      },
+    });
+  });
+
+  await writePaymentLog({
+    orderId: order.id,
+    orderNo: order.orderNo,
+    channel: getQueryChannel(responsePayload, channel),
+    event: "query",
+    requestPayload: params,
+    responsePayload,
+    success: true,
+    message: "主动查单确认付款成功",
+  });
+
+  return {
+    ok: true,
+    paid: true,
+    message: "支付成功，订单已付款，等待后台发货",
+  };
 }

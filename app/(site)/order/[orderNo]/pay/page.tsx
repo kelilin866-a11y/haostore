@@ -48,6 +48,17 @@ function getNezhaPayInfo(value: unknown) {
   return typeof payInfo === "string" && payInfo ? payInfo : null;
 }
 
+function getNezhaPayType(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const payload = value as Record<string, unknown>;
+  const payType = payload.pay_type;
+
+  return typeof payType === "string" && payType ? payType : null;
+}
+
 export default async function PayPage({
   params,
   searchParams,
@@ -94,6 +105,7 @@ export default async function PayPage({
   const displayedPaymentMethod =
     paymentMethodLabels[order.paymentMethod] || order.paymentMethod;
   const nezhaPayInfo = getNezhaPayInfo(latestNezhaPaymentLog?.responsePayload);
+  const nezhaPayType = getNezhaPayType(latestNezhaPaymentLog?.responsePayload);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
@@ -232,6 +244,7 @@ export default async function PayPage({
               <NezhaPaymentPanel
                 orderNo={order.orderNo}
                 payInfo={nezhaPayInfo}
+                payType={nezhaPayType}
                 paymentLabel={displayedPaymentMethod}
                 initialPaymentStatus={order.paymentStatus}
                 initialOrderStatus={order.orderStatus}
