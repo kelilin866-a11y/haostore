@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { StorefrontPaymentOption } from "@/lib/payments/methods";
 import { formatCurrency } from "@/lib/utils";
 
 type VariantOption = {
@@ -19,20 +20,8 @@ type VariantOption = {
 type OrderFormProps = {
   productId: string;
   variants: VariantOption[];
-  isNezhaPaymentEnabled?: boolean;
+  paymentMethods: StorefrontPaymentOption[];
 };
-
-const paymentMethods = [
-  {
-    value: "gateway_reserved",
-    label: process.env.NEXT_PUBLIC_PAYMENT_GATEWAY_NAME || "Stripe Checkout 在线支付",
-  },
-];
-
-const nezhaPaymentMethods = [
-  { value: "nezha_alipay", label: "哪吒支付宝" },
-  { value: "nezha_wxpay", label: "哪吒微信支付" },
-];
 
 const invalidContactMessage =
   "请输入有效联系方式，例如邮箱、Telegram、手机号或微信号";
@@ -65,13 +54,15 @@ function clampQuantity(value: number, maxStock: number) {
 export function OrderForm({
   productId,
   variants,
-  isNezhaPaymentEnabled = false,
+  paymentMethods,
 }: OrderFormProps) {
   const router = useRouter();
   const [variantId, setVariantId] = useState(() => getInitialVariantId(variants));
   const [quantity, setQuantity] = useState(1);
   const [contact, setContact] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("gateway_reserved");
+  const [paymentMethod, setPaymentMethod] = useState(
+    () => paymentMethods[0]?.value ?? "gateway_reserved",
+  );
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -81,9 +72,9 @@ export function OrderForm({
   );
   const selectedStock = selectedVariant?.availableStock ?? 0;
   const canPurchaseSelectedVariant = selectedStock > 0;
-  const availablePaymentMethods = isNezhaPaymentEnabled
-    ? [...paymentMethods, ...nezhaPaymentMethods]
-    : paymentMethods;
+  const selectedPaymentMethod = paymentMethods.find(
+    (method) => method.value === paymentMethod,
+  );
 
   const total = useMemo(() => {
     return selectedVariant && canPurchaseSelectedVariant
@@ -277,7 +268,7 @@ export function OrderForm({
           onChange={(event) => setPaymentMethod(event.target.value)}
           disabled={!canPurchaseSelectedVariant}
         >
-          {availablePaymentMethods.map((method) => (
+          {paymentMethods.map((method) => (
             <option key={method.value} value={method.value}>
               {method.label}
             </option>
@@ -313,7 +304,9 @@ export function OrderForm({
             : "立即购买"}
       </Button>
       <p className="text-xs leading-5 text-[#64748B]">
-        支持 Stripe Checkout 在线支付。支付成功后，系统会通过支付回调确认付款状态。发货仍由后台管理员人工确认，确认前不会展示任何发货内容。
+        {selectedPaymentMethod?.description ||
+          "支付完成后系统会自动确认付款状态，订单进入待发货状态。"}
+        发货仍由后台管理员人工确认，确认前不会展示任何发货内容。
       </p>
     </form>
   );

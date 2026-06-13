@@ -12,7 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { prisma } from "@/lib/db";
+import { getStorefrontPaymentMethods } from "@/lib/payments/methods";
 import { isNezhaPaymentEnabled } from "@/lib/payments/nezha";
+import { paymentGatewayConfig } from "@/lib/payment-gateway";
 import { getSiteSettings } from "@/lib/site-settings";
 import { formatCurrency } from "@/lib/utils";
 
@@ -84,6 +86,10 @@ export default async function ProductDetailPage({
   const deliveryText = product.deliveryFormat || settings.product_default_delivery;
   const afterSalesText = product.afterSales || settings.after_sales_notice;
   const coverImageUrl = getHttpImageUrl(product.coverImage);
+  const paymentMethods = getStorefrontPaymentMethods({
+    isNezhaEnabled: isNezhaPaymentEnabled(),
+    stripeLabel: paymentGatewayConfig.gatewayName,
+  });
 
   return (
     <div className="bg-[#F8FAFC]">
@@ -236,7 +242,7 @@ export default async function ProductDetailPage({
               <OrderForm
                 productId={product.id}
                 variants={variants}
-                isNezhaPaymentEnabled={isNezhaPaymentEnabled()}
+                paymentMethods={paymentMethods}
               />
             </CardContent>
           </Card>

@@ -228,7 +228,7 @@ export function OrderQueryForm({
                     <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
                       {order.paymentStatus === "paid"
                         ? "已付款，等待后台管理员人工确认发货。确认前不会展示任何发货内容。"
-                        : "待支付。支付成功后系统会通过 Stripe webhook 自动确认付款状态，发货仍由后台管理员人工确认。"}
+                        : "待支付。支付成功后系统会通过支付回调自动确认付款状态，发货仍由后台管理员人工确认。"}
                     </div>
                   )}
                 </CardContent>

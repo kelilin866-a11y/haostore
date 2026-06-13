@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
+import { paymentMethodLabels } from "@/lib/payments/methods";
 import {
   isStripePaymentEnabled,
   paymentGatewayConfig,
@@ -21,15 +22,6 @@ import { getSiteSettings } from "@/lib/site-settings";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-const paymentMethodLabels: Record<string, string> = {
-  manual_alipay: "支付宝备用通道",
-  manual_wechat: "微信备用通道",
-  manual_usdt: "USDT 备用通道",
-  gateway_reserved: paymentGatewayConfig.gatewayName,
-  nezha_alipay: "哪吒支付宝",
-  nezha_wxpay: "哪吒微信支付",
-};
 
 async function getSettings() {
   const settings = await getSiteSettings();
@@ -259,7 +251,7 @@ export default async function PayPage({
             </CardHeader>
             <CardContent className="space-y-4 text-sm leading-7 text-slate-600">
               <p>
-                支付网关：{paymentGatewayConfig.gatewayName}。支付成功后，系统会通过
+                支付方式：{paymentGatewayConfig.gatewayName}。支付成功后，系统会通过
                 webhook 自动确认付款状态。发货仍由后台人工确认，确认前不会展示任何发货内容。
               </p>
               <PaymentCheckoutButton orderNo={order.orderNo} />
