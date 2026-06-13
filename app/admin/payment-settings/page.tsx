@@ -323,6 +323,11 @@ export default async function AdminPaymentSettingsPage({
                 value={epayDiagnostics.hasKey}
                 isSecret
               />
+              <ValueRow label="EPAY_DEVICE" value={epayConfig.device || "pc"} />
+              <ValueRow
+                label="EPAY_SIGN_TYPE"
+                value={epayConfig.signType || "MD5"}
+              />
               <ValueRow label="EPAY_NOTIFY_URL" value={epayConfig.notifyUrl} />
               <ValueRow label="EPAY_RETURN_URL" value={epayConfig.returnUrl} />
               <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
@@ -470,6 +475,14 @@ export default async function AdminPaymentSettingsPage({
                   <p className="mt-1 text-sm text-slate-500">
                     epay 默认停用。启用后，还需要把默认支付宝或微信通道切换为 epay 才会实际使用。
                   </p>
+                  <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+                    <p>网关地址示例：https://pay.mymzf.com</p>
+                    <p>Notify URL：{epayWebhookUrl}</p>
+                    <p>Return URL：{paymentReturnUrl}</p>
+                    <p>
+                      type、out_trade_no、name、money、sign 不需要手动填写，系统会自动生成。
+                    </p>
+                  </div>
                 </div>
                 <div className="grid gap-5 md:grid-cols-2">
                   <div className="space-y-2">
@@ -501,6 +514,30 @@ export default async function AdminPaymentSettingsPage({
                       defaultValue={epayConfig.pid}
                       placeholder="填写标准易支付商户 PID"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="epay_device">设备类型</Label>
+                    <Input
+                      id="epay_device"
+                      name="epay_device"
+                      defaultValue={epayConfig.device || "pc"}
+                      placeholder="pc"
+                    />
+                    <p className="text-xs text-slate-500">
+                      留空时默认使用 pc。
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="epay_sign_type">签名类型</Label>
+                    <Input
+                      id="epay_sign_type"
+                      name="epay_sign_type"
+                      defaultValue={epayConfig.signType || "MD5"}
+                      placeholder="MD5"
+                    />
+                    <p className="text-xs text-slate-500">
+                      留空时默认使用 MD5。
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="epay_key">

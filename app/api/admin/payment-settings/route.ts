@@ -15,6 +15,8 @@ const editablePaymentSettingKeys = [
   "epay_enabled",
   "epay_gateway",
   "epay_pid",
+  "epay_device",
+  "epay_sign_type",
   "epay_notify_url",
   "epay_return_url",
   "default_alipay_provider",

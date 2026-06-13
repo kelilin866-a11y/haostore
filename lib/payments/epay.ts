@@ -12,6 +12,8 @@ export type EpayConfig = {
   gateway: string;
   pid: string;
   key: string;
+  device: string;
+  signType: string;
   notifyUrl: string;
   returnUrl: string;
 };
@@ -51,6 +53,8 @@ export const epaySettingKeys = [
   "epay_gateway",
   "epay_pid",
   "epay_key",
+  "epay_device",
+  "epay_sign_type",
   "epay_notify_url",
   "epay_return_url",
 ] as const;
@@ -100,6 +104,18 @@ export async function getEpayConfig(): Promise<EpayConfig> {
     gateway: settingOrEnv(settings, "epay_gateway", process.env.EPAY_GATEWAY),
     pid: settingOrEnv(settings, "epay_pid", process.env.EPAY_PID),
     key: settingOrEnv(settings, "epay_key", process.env.EPAY_KEY),
+    device: settingOrEnv(
+      settings,
+      "epay_device",
+      process.env.EPAY_DEVICE,
+      "pc",
+    ),
+    signType: settingOrEnv(
+      settings,
+      "epay_sign_type",
+      process.env.EPAY_SIGN_TYPE,
+      "MD5",
+    ),
     notifyUrl: settingOrEnv(
       settings,
       "epay_notify_url",
@@ -306,13 +322,14 @@ export async function createEpayPayment(input: EpayCreateInput) {
 
   const params = {
     pid: config.pid,
+    device: config.device || "pc",
     type: channel,
     out_trade_no: input.orderNo,
     notify_url: config.notifyUrl,
     return_url: getEpayReturnUrl(input.orderNo, config),
     name: safeTruncate(input.productName, 120),
     money: decimalToYuan(input.amount),
-    sign_type: "MD5",
+    sign_type: config.signType || "MD5",
   };
   const signedParams = {
     ...params,
