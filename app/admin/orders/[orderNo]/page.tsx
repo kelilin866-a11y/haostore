@@ -3,11 +3,13 @@ import { notFound, redirect } from "next/navigation";
 
 import { AdminConfirmButton } from "@/components/site/AdminConfirmButton";
 import { AdminDeliveryContentForm } from "@/components/site/AdminDeliveryContentForm";
+import { AdminPaymentQueryButton } from "@/components/site/AdminPaymentQueryButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
+import { paymentMethodLabels } from "@/lib/payments/methods";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +76,33 @@ function getDeliveryStatusLabel(status: string) {
   return "待发货";
 }
 
+function isNezhaPaymentMethod(method: string) {
+  return method === "nezha_alipay" || method === "nezha_wxpay";
+}
+
+function stringifyJsonValue(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return "";
+  }
+
+  const payload = value as Record<string, unknown>;
+  const candidates = [
+    payload.money,
+    payload.amount,
+    payload.total_amount,
+    payload.trade_no,
+    payload.api_trade_no,
+    payload.out_trade_no,
+    payload.transactionId,
+    payload.id,
+  ];
+
+  return candidates
+    .filter((item) => item !== undefined && item !== null && String(item) !== "")
+    .map((item) => String(item))
+    .join(" / ");
+}
+
 export default async function AdminOrderDetailPage({
   params,
 }: AdminOrderDetailPageProps) {
@@ -101,6 +130,9 @@ export default async function AdminOrderDetailPage({
           },
         },
       },
+      paymentRecords: {
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -115,6 +147,17 @@ export default async function AdminOrderDetailPage({
   const deliveryContent = order.deliveryItems
     .map((item) => item.content)
     .join("\n");
+  const latestPaymentRecord = order.paymentRecords[0];
+  const paymentLogs = await prisma.paymentLog.findMany({
+    where: {
+      OR: [{ orderId: order.id }, { orderNo: order.orderNo }],
+    },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+  });
+  const canQueryNezhaPayment =
+    isNezhaPaymentMethod(order.paymentMethod) && order.paymentStatus !== "paid";
+  const thirdPartyTradeNo = latestPaymentRecord?.transactionId || "-";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -190,6 +233,105 @@ export default async function AdminOrderDetailPage({
                   </div>
                 ))}
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>支付信息</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-5">
+            <div className="grid gap-3 rounded-md border border-slate-200 bg-white p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              <p>
+                前台支付方式：
+                <span className="font-medium text-primary">
+                  {paymentMethodLabels[order.paymentMethod] || order.paymentMethod}
+                </span>
+              </p>
+              <p>
+                内部支付通道：
+                <span className="font-mono text-xs text-primary">
+                  {order.paymentMethod}
+                </span>
+              </p>
+              <p>支付状态：{order.paymentStatus}</p>
+              <p>订单状态：{order.orderStatus}</p>
+              <p>发货状态：{order.deliveryStatus}</p>
+              <p>支付时间：{formatDateTime(order.paidAt)}</p>
+              <p className="break-all lg:col-span-2">
+                第三方交易号：
+                <span className="font-mono text-xs text-primary">
+                  {thirdPartyTradeNo}
+                </span>
+              </p>
+            </div>
+
+            {order.paymentStatus === "paid" ? (
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                已支付，无需查单。
+              </div>
+            ) : canQueryNezhaPayment ? (
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+                <p className="mb-3">
+                  当前订单使用支付宝/微信支付且尚未确认付款，可手动查询哪吒支付状态。
+                </p>
+                <AdminPaymentQueryButton orderNo={order.orderNo} />
+              </div>
+            ) : (
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                当前支付方式无需哪吒查单。
+              </div>
+            )}
+
+            <div>
+              <p className="mb-2 font-medium text-primary">最近 10 条支付日志</p>
+              {paymentLogs.length ? (
+                <div className="overflow-x-auto rounded-md border border-slate-200">
+                  <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2 font-medium">时间</th>
+                        <th className="px-3 py-2 font-medium">事件</th>
+                        <th className="px-3 py-2 font-medium">结果</th>
+                        <th className="px-3 py-2 font-medium">通道</th>
+                        <th className="px-3 py-2 font-medium">消息</th>
+                        <th className="px-3 py-2 font-medium">金额/交易号</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {paymentLogs.map((log) => (
+                        <tr key={log.id}>
+                          <td className="whitespace-nowrap px-3 py-2 text-slate-600">
+                            {formatDateTime(log.createdAt)}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-slate-700">
+                            {log.event}
+                          </td>
+                          <td className="px-3 py-2">
+                            <Badge variant={log.success ? "success" : "warning"}>
+                              {log.success ? "成功" : "失败"}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">
+                            {log.channel || log.provider}
+                          </td>
+                          <td className="max-w-sm px-3 py-2 text-slate-600">
+                            {log.message || "-"}
+                          </td>
+                          <td className="max-w-sm break-all px-3 py-2 font-mono text-slate-600">
+                            {stringifyJsonValue(log.responsePayload) || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                  暂无支付日志。
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
