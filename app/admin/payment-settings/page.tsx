@@ -44,6 +44,19 @@ function ConfigStatus({ value }: { value: boolean }) {
   );
 }
 
+function getErrorMessage(code?: string) {
+  if (code === "private-key") {
+    return "商户私钥格式错误，请检查 BEGIN/END 头尾和换行。";
+  }
+  if (code === "public-key") {
+    return "平台公钥格式错误，请检查 BEGIN/END 头尾和换行。";
+  }
+  if (code) {
+    return "支付设置保存失败，请稍后重试。";
+  }
+  return "";
+}
+
 function ValueRow({
   label,
   value,
@@ -135,7 +148,7 @@ export default async function AdminPaymentSettingsPage({
 
       {searchParams?.error ? (
         <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          支付设置保存失败，请稍后重试。
+          {getErrorMessage(searchParams.error)}
         </div>
       ) : null}
 
@@ -301,6 +314,9 @@ export default async function AdminPaymentSettingsPage({
                     defaultValue={nezhaConfig.notifyUrl}
                     placeholder={nezhaWebhookUrl}
                   />
+                  <p className="text-xs leading-5 text-slate-500">
+                    正式地址应为 /api/payments/nezha/webhook，不要带多余字符。
+                  </p>
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="nezha_pay_private_key">
@@ -316,6 +332,14 @@ export default async function AdminPaymentSettingsPage({
                     placeholder="留空则不修改，填写新内容则覆盖"
                     className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
                   />
+                  <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+                    <p>商户私钥用于请求签名，请填写完整 PEM 格式：</p>
+                    <pre className="mt-2 overflow-x-auto rounded bg-white p-2 font-mono text-[11px] text-slate-700">{`-----BEGIN PRIVATE KEY-----
+...
+-----END PRIVATE KEY-----`}</pre>
+                    <p className="mt-2">也支持单行 \n 格式：</p>
+                    <pre className="mt-2 overflow-x-auto rounded bg-white p-2 font-mono text-[11px] text-slate-700">{`-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----`}</pre>
+                  </div>
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="nezha_pay_platform_public_key">
@@ -331,6 +355,14 @@ export default async function AdminPaymentSettingsPage({
                     placeholder="留空则不修改，填写新内容则覆盖"
                     className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
                   />
+                  <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+                    <p>平台公钥用于验证哪吒回调和查单结果签名，请填写完整 PEM 格式：</p>
+                    <pre className="mt-2 overflow-x-auto rounded bg-white p-2 font-mono text-[11px] text-slate-700">{`-----BEGIN PUBLIC KEY-----
+...
+-----END PUBLIC KEY-----`}</pre>
+                    <p className="mt-2">也支持单行 \n 格式：</p>
+                    <pre className="mt-2 overflow-x-auto rounded bg-white p-2 font-mono text-[11px] text-slate-700">{`-----BEGIN PUBLIC KEY-----\\n...\\n-----END PUBLIC KEY-----`}</pre>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="default_alipay_provider">默认支付宝通道</Label>
