@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Clock, ExternalLink, QrCode, RefreshCw } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  QrCode,
+  RefreshCw,
+  X,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -67,11 +75,13 @@ export function NezhaPaymentPanel({
   const [message, setMessage] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
+  const [showPaymentNotice, setShowPaymentNotice] = useState(false);
 
   const isPaid = status.paymentStatus === "paid";
   const isDelivered = status.deliveryStatus === "delivered";
   const isQrcode = payType === "qrcode";
   const canDisplayQrImage = isQrcode && isImagePayInfo(payInfo);
+  const openPaymentText = `打开${paymentLabel}页面`;
   const statusTitle = useMemo(() => {
     if (isDelivered) {
       return "订单已发货";
@@ -149,6 +159,19 @@ export function NezhaPaymentPanel({
     }
   }
 
+  function openPaymentPage() {
+    if (!payInfo) {
+      return;
+    }
+
+    setShowPaymentNotice(false);
+    const opened = window.open(payInfo, "_blank", "noopener,noreferrer");
+
+    if (!opened) {
+      window.location.href = payInfo;
+    }
+  }
+
   useEffect(() => {
     if (isPaid || isDelivered) {
       return;
@@ -186,6 +209,24 @@ export function NezhaPaymentPanel({
           </div>
         </div>
       </div>
+
+      {!isPaid ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-900">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-1 h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-semibold">付款完成后请返回本页面查看结果</p>
+              <p className="mt-1">
+                微信/支付宝付款页面可能不会自动跳回本站。付款完成后，请回到本页面，
+                系统会自动检测付款状态。请勿重复付款。
+              </p>
+              <p className="mt-1">
+                如果页面没有自动更新，可点击“我已付款，检查状态”。
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-2 rounded-md border border-slate-200 bg-white p-4 sm:grid-cols-2">
         <p>支付状态：{status.paymentStatus}</p>
@@ -228,14 +269,26 @@ export function NezhaPaymentPanel({
         </div>
       ) : isPaid ? (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
-          支付成功，订单已付款，等待后台发货。请勿重复付款。
+          <p className="font-semibold">支付成功，等待后台发货</p>
+          <p className="mt-1">
+            系统已确认付款，请勿重复支付。订单已进入待发货状态，
+            后台管理员确认后会显示发货内容。
+          </p>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+            <Button className="bg-[#14B8A6] text-white hover:bg-[#0F9F93]" asChild>
+              <Link href="/order/query">查看订单</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/">返回首页</Link>
+            </Button>
+          </div>
         </div>
       ) : null}
 
       {timedOut && !isPaid ? (
         <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-800">
-          暂未检测到付款。如果你已经付款，请点击“我已付款，检查状态”，
-          或稍后通过订单查询查看订单状态。
+          暂未检测到付款。如果你已经完成付款，请点击“我已付款，检查状态”。
+          如果仍未更新，请保存订单号并联系客服处理，请勿重复付款。
         </div>
       ) : null}
 
@@ -247,11 +300,13 @@ export function NezhaPaymentPanel({
 
       <div className="flex flex-col gap-3 sm:flex-row">
         {payInfo && !isQrcode ? (
-          <Button className="bg-[#14B8A6] text-white hover:bg-[#0F9F93]" asChild>
-            <a href={payInfo} target="_blank" rel="noreferrer">
-              <ExternalLink className="h-4 w-4" aria-hidden="true" />
-              打开支付页面
-            </a>
+          <Button
+            type="button"
+            className="bg-[#14B8A6] text-white hover:bg-[#0F9F93]"
+            onClick={() => setShowPaymentNotice(true)}
+          >
+            <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            {openPaymentText}
           </Button>
         ) : isQrcode ? null : (
           <Button disabled>支付页面暂不可用</Button>
@@ -274,6 +329,53 @@ export function NezhaPaymentPanel({
         本页面只读取本地订单状态，不会直接根据第三方页面返回参数修改订单。
         真正付款确认以支付回调验签成功后的状态为准；主动查单仅作为补充确认方式。
       </p>
+
+      {showPaymentNotice ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="nezha-payment-notice-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p
+                  id="nezha-payment-notice-title"
+                  className="text-lg font-semibold text-primary"
+                >
+                  即将打开微信/支付宝付款页面
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  付款完成后，第三方页面可能不会自动返回本站。
+                  请付款后回到本页面查看结果，系统会自动检测付款状态。
+                  请勿重复付款。
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-full p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                onClick={() => setShowPaymentNotice(false)}
+                aria-label="关闭提示"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <Button type="button" variant="outline" onClick={() => setShowPaymentNotice(false)}>
+                取消
+              </Button>
+              <Button
+                type="button"
+                className="bg-[#14B8A6] text-white hover:bg-[#0F9F93]"
+                onClick={openPaymentPage}
+              >
+                我知道了，去付款
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
