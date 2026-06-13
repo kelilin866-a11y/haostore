@@ -7,6 +7,18 @@ import { getAbsoluteUrl } from "@/lib/payment-gateway";
 export type NezhaPaymentCode = "nezha_alipay" | "nezha_wxpay";
 export type NezhaPaymentType = "alipay" | "wxpay";
 
+export type NezhaPayConfig = {
+  enabled: boolean;
+  gateway: string;
+  pid: string;
+  privateKey: string;
+  platformPublicKey: string;
+  returnUrl: string;
+  notifyUrl: string;
+  defaultAlipayProvider: string;
+  defaultWxpayProvider: string;
+};
+
 type NezhaCreateInput = {
   orderId: string;
   orderNo: string;
@@ -33,6 +45,8 @@ type NezhaQueryResult = {
   message: string;
 };
 
+type PaymentSettingsMap = Partial<Record<string, string>>;
+
 const nezhaPaymentTypeByMethod: Record<NezhaPaymentCode, NezhaPaymentType> = {
   nezha_alipay: "alipay",
   nezha_wxpay: "wxpay",
@@ -47,15 +61,101 @@ export const nezhaPaymentMethods = Object.keys(
   nezhaPaymentTypeByMethod,
 ) as NezhaPaymentCode[];
 
-export const nezhaPayConfig = {
-  enabled: process.env.NEZHA_PAY_ENABLED === "true",
-  gateway: process.env.NEZHA_PAY_GATEWAY || "https://nzzf.org",
-  pid: process.env.NEZHA_PAY_PID || "",
-  privateKey: process.env.NEZHA_PAY_PRIVATE_KEY || "",
-  platformPublicKey: process.env.NEZHA_PAY_PLATFORM_PUBLIC_KEY || "",
-  returnUrl: process.env.NEZHA_PAY_RETURN_URL || "",
-  notifyUrl: process.env.NEZHA_PAY_NOTIFY_URL || "",
-};
+export const nezhaSettingKeys = [
+  "nezha_pay_enabled",
+  "nezha_pay_gateway",
+  "nezha_pay_pid",
+  "nezha_pay_private_key",
+  "nezha_pay_platform_public_key",
+  "nezha_pay_return_url",
+  "nezha_pay_notify_url",
+  "default_alipay_provider",
+  "default_wxpay_provider",
+] as const;
+
+function envOrDefault(value: string | undefined, fallback = "") {
+  return value && value.trim() ? value.trim() : fallback;
+}
+
+function settingOrEnv(
+  settings: PaymentSettingsMap,
+  settingKey: string,
+  envValue: string | undefined,
+  fallback = "",
+) {
+  const settingValue = settings[settingKey];
+
+  if (settingValue !== undefined && settingValue.trim() !== "") {
+    return settingValue.trim();
+  }
+
+  return envOrDefault(envValue, fallback);
+}
+
+function parseEnabled(value: string) {
+  return value === "true";
+}
+
+export async function getPaymentSettingMap() {
+  const rows = await prisma.setting.findMany({
+    where: {
+      key: {
+        in: [...nezhaSettingKeys],
+      },
+    },
+  });
+
+  return Object.fromEntries(rows.map((row) => [row.key, row.value]));
+}
+
+export async function getNezhaPayConfig(): Promise<NezhaPayConfig> {
+  const settings = await getPaymentSettingMap();
+
+  return {
+    enabled: parseEnabled(
+      settingOrEnv(settings, "nezha_pay_enabled", process.env.NEZHA_PAY_ENABLED, "false"),
+    ),
+    gateway: settingOrEnv(
+      settings,
+      "nezha_pay_gateway",
+      process.env.NEZHA_PAY_GATEWAY,
+      "https://nzzf.org",
+    ),
+    pid: settingOrEnv(settings, "nezha_pay_pid", process.env.NEZHA_PAY_PID),
+    privateKey: settingOrEnv(
+      settings,
+      "nezha_pay_private_key",
+      process.env.NEZHA_PAY_PRIVATE_KEY,
+    ),
+    platformPublicKey: settingOrEnv(
+      settings,
+      "nezha_pay_platform_public_key",
+      process.env.NEZHA_PAY_PLATFORM_PUBLIC_KEY,
+    ),
+    returnUrl: settingOrEnv(
+      settings,
+      "nezha_pay_return_url",
+      process.env.NEZHA_PAY_RETURN_URL,
+    ),
+    notifyUrl: settingOrEnv(
+      settings,
+      "nezha_pay_notify_url",
+      process.env.NEZHA_PAY_NOTIFY_URL,
+    ),
+    defaultAlipayProvider: settingOrEnv(
+      settings,
+      "default_alipay_provider",
+      process.env.DEFAULT_ALIPAY_PROVIDER,
+      "nezha",
+    ),
+    defaultWxpayProvider: settingOrEnv(
+      settings,
+      "default_wxpay_provider",
+      process.env.DEFAULT_WXPAY_PROVIDER,
+      "nezha",
+    ),
+  };
+}
 
 export function isNezhaPaymentCode(value: string): value is NezhaPaymentCode {
   return value === "nezha_alipay" || value === "nezha_wxpay";
@@ -65,50 +165,49 @@ export function getNezhaPaymentType(method: NezhaPaymentCode) {
   return nezhaPaymentTypeByMethod[method];
 }
 
-export function getNezhaConfigIssues() {
+export function getNezhaConfigIssues(config: NezhaPayConfig) {
   const issues: string[] = [];
 
-  if (!nezhaPayConfig.enabled) {
+  if (!config.enabled) {
     issues.push("NEZHA_PAY_ENABLED 必须设置为 true");
   }
-  if (!nezhaPayConfig.gateway) {
+  if (!config.gateway) {
     issues.push("NEZHA_PAY_GATEWAY 未配置");
   }
-  if (!nezhaPayConfig.pid) {
+  if (!config.pid) {
     issues.push("NEZHA_PAY_PID 未配置");
   }
-  if (!nezhaPayConfig.privateKey) {
+  if (!config.privateKey) {
     issues.push("NEZHA_PAY_PRIVATE_KEY 未配置");
   }
-  if (!nezhaPayConfig.platformPublicKey) {
+  if (!config.platformPublicKey) {
     issues.push("NEZHA_PAY_PLATFORM_PUBLIC_KEY 未配置");
   }
-  if (!nezhaPayConfig.returnUrl) {
+  if (!config.returnUrl) {
     issues.push("NEZHA_PAY_RETURN_URL 未配置");
   }
-  if (!nezhaPayConfig.notifyUrl) {
+  if (!config.notifyUrl) {
     issues.push("NEZHA_PAY_NOTIFY_URL 未配置");
   }
 
   return issues;
 }
 
-export function getNezhaDisplayDiagnostics() {
+export function getNezhaDisplayDiagnostics(config: NezhaPayConfig) {
   return {
-    nezhaEnabled: nezhaPayConfig.enabled,
-    hasPid: Boolean(nezhaPayConfig.pid),
-    hasPrivateKey: Boolean(nezhaPayConfig.privateKey),
-    hasPlatformPublicKey: Boolean(nezhaPayConfig.platformPublicKey),
-    hasReturnUrl: Boolean(nezhaPayConfig.returnUrl),
-    hasNotifyUrl: Boolean(nezhaPayConfig.notifyUrl),
-    privateKeyParsed: nezhaPayConfig.privateKey
-      ? canParsePrivateKey(nezhaPayConfig.privateKey)
-      : false,
+    nezhaEnabled: config.enabled,
+    hasPid: Boolean(config.pid),
+    hasPrivateKey: Boolean(config.privateKey),
+    hasPlatformPublicKey: Boolean(config.platformPublicKey),
+    hasReturnUrl: Boolean(config.returnUrl),
+    hasNotifyUrl: Boolean(config.notifyUrl),
+    privateKeyParsed: config.privateKey ? canParsePrivateKey(config.privateKey) : false,
   };
 }
 
-export function isNezhaPaymentEnabled() {
-  const diagnostics = getNezhaDisplayDiagnostics();
+export async function isNezhaPaymentEnabled() {
+  const config = await getNezhaPayConfig();
+  const diagnostics = getNezhaDisplayDiagnostics(config);
 
   console.info("[nezha] storefront display diagnostics", diagnostics);
 
@@ -135,9 +234,9 @@ class NezhaKeyFormatError extends Error {
   }
 }
 
-function createNezhaPrivateKey() {
+function createNezhaPrivateKey(config: NezhaPayConfig) {
   try {
-    return crypto.createPrivateKey(normalizePemKey(nezhaPayConfig.privateKey));
+    return crypto.createPrivateKey(normalizePemKey(config.privateKey));
   } catch {
     throw new NezhaKeyFormatError(
       "哪吒支付商户私钥格式错误，请检查 NEZHA_PAY_PRIVATE_KEY",
@@ -145,11 +244,9 @@ function createNezhaPrivateKey() {
   }
 }
 
-function createNezhaPublicKey() {
+function createNezhaPublicKey(config: NezhaPayConfig) {
   try {
-    return crypto.createPublicKey(
-      normalizePemKey(nezhaPayConfig.platformPublicKey),
-    );
+    return crypto.createPublicKey(normalizePemKey(config.platformPublicKey));
   } catch {
     throw new NezhaKeyFormatError(
       "哪吒支付平台公钥格式错误，请检查 NEZHA_PAY_PLATFORM_PUBLIC_KEY",
@@ -166,18 +263,12 @@ function canParsePrivateKey(value: string) {
   }
 }
 
-function canParsePublicKey(value: string) {
-  try {
-    crypto.createPublicKey(normalizePemKey(value));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function getSafeSignDebugPayload(params: Record<string, unknown>) {
+function getSafeSignDebugPayload(
+  params: Record<string, unknown>,
+  config: NezhaPayConfig,
+) {
   return {
-    privateKeyParsed: canParsePrivateKey(nezhaPayConfig.privateKey),
+    privateKeyParsed: canParsePrivateKey(config.privateKey),
     signContent: buildSignContent(params),
     signParamKeys: getSignEntries(params).map(([key]) => key),
   };
@@ -208,21 +299,27 @@ export function buildSignContent(params: Record<string, unknown>) {
     .join("&");
 }
 
-export function signNezhaParams(params: Record<string, unknown>) {
+export function signNezhaParams(
+  params: Record<string, unknown>,
+  config: NezhaPayConfig,
+) {
   const signContent = buildSignContent(params);
   const signer = crypto.createSign("RSA-SHA256");
 
   signer.update(signContent);
   signer.end();
 
-  return signer.sign(createNezhaPrivateKey(), "base64");
+  return signer.sign(createNezhaPrivateKey(config), "base64");
 }
 
-export function verifyNezhaParams(params: Record<string, unknown>) {
+export function verifyNezhaParams(
+  params: Record<string, unknown>,
+  config: NezhaPayConfig,
+) {
   const sign =
     typeof params.sign === "string" ? params.sign : String(params.sign || "");
 
-  if (!sign || !nezhaPayConfig.platformPublicKey) {
+  if (!sign || !config.platformPublicKey) {
     return false;
   }
 
@@ -231,7 +328,7 @@ export function verifyNezhaParams(params: Record<string, unknown>) {
     verifier.update(buildSignContent(params));
     verifier.end();
 
-    return verifier.verify(createNezhaPublicKey(), sign, "base64");
+    return verifier.verify(createNezhaPublicKey(config), sign, "base64");
   } catch (error) {
     console.error("[nezha] signature verification failed", {
       error: error instanceof Error ? error.message : error,
@@ -299,17 +396,16 @@ export async function writePaymentLog(input: PaymentLogInput) {
   }
 }
 
-function getCreateUrl() {
-  return new URL("/api/pay/create", nezhaPayConfig.gateway).toString();
+function getCreateUrl(config: NezhaPayConfig) {
+  return new URL("/api/pay/create", config.gateway).toString();
 }
 
-function getQueryUrl() {
-  return new URL("/api/pay/query", nezhaPayConfig.gateway).toString();
+function getQueryUrl(config: NezhaPayConfig) {
+  return new URL("/api/pay/query", config.gateway).toString();
 }
 
-function getNezhaReturnUrl(orderNo: string) {
-  const baseUrl =
-    nezhaPayConfig.returnUrl || getAbsoluteUrl(`/payment/result`);
+function getNezhaReturnUrl(orderNo: string, config: NezhaPayConfig) {
+  const baseUrl = config.returnUrl || getAbsoluteUrl(`/payment/result`);
   const url = new URL(baseUrl);
 
   url.searchParams.set("orderNo", orderNo);
@@ -318,7 +414,8 @@ function getNezhaReturnUrl(orderNo: string) {
 }
 
 export async function createNezhaPayment(input: NezhaCreateInput) {
-  const issues = getNezhaConfigIssues();
+  const config = await getNezhaPayConfig();
+  const issues = getNezhaConfigIssues(config);
   const channel = getNezhaPaymentType(input.paymentMethod);
 
   if (issues.length > 0) {
@@ -337,13 +434,13 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
   }
 
   const params = {
-    pid: nezhaPayConfig.pid,
+    pid: config.pid,
     method: "jump",
     device: "pc",
     type: channel,
     out_trade_no: input.orderNo,
-    notify_url: nezhaPayConfig.notifyUrl,
-    return_url: getNezhaReturnUrl(input.orderNo),
+    notify_url: config.notifyUrl,
+    return_url: getNezhaReturnUrl(input.orderNo, config),
     name: safeTruncateByBytes(input.productName, 127),
     money: decimalToYuan(input.amount),
     clientip: input.clientIp || "127.0.0.1",
@@ -355,7 +452,7 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
   try {
     signedParams = {
       ...params,
-      sign: signNezhaParams(params),
+      sign: signNezhaParams(params, config),
     };
   } catch (error) {
     const message =
@@ -365,7 +462,7 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
       orderNo: input.orderNo,
       channel,
       event: "create",
-      requestPayload: getSafeSignDebugPayload(params),
+      requestPayload: getSafeSignDebugPayload(params, config),
       success: false,
       message:
         error instanceof NezhaKeyFormatError
@@ -374,7 +471,7 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
     });
     console.error("[nezha] create request signing failed", {
       orderNo: input.orderNo,
-      privateKeyParsed: canParsePrivateKey(nezhaPayConfig.privateKey),
+      privateKeyParsed: canParsePrivateKey(config.privateKey),
       signParamKeys: getSignEntries(params).map(([key]) => key),
       error: message,
     });
@@ -390,7 +487,7 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
   let responsePayload: Record<string, unknown>;
 
   try {
-    const response = await fetch(getCreateUrl(), {
+    const response = await fetch(getCreateUrl(config), {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -413,7 +510,7 @@ export async function createNezhaPayment(input: NezhaCreateInput) {
     return { ok: false, message: "哪吒支付创建失败，请稍后重试" };
   }
 
-  const verified = verifyNezhaParams(responsePayload);
+  const verified = verifyNezhaParams(responsePayload, config);
   if (!verified) {
     await writePaymentLog({
       orderId: input.orderId,
@@ -529,7 +626,8 @@ function getPaymentMethodFromQuery(
 export async function queryNezhaPaymentAndSync(
   orderNo: string,
 ): Promise<NezhaQueryResult> {
-  const issues = getNezhaConfigIssues();
+  const config = await getNezhaPayConfig();
+  const issues = getNezhaConfigIssues(config);
   if (issues.length > 0) {
     await writePaymentLog({
       orderNo,
@@ -581,7 +679,7 @@ export async function queryNezhaPaymentAndSync(
 
   const channel = getNezhaPaymentType(order.paymentMethod);
   const params = {
-    pid: nezhaPayConfig.pid,
+    pid: config.pid,
     out_trade_no: order.orderNo,
     timestamp: String(Math.floor(Date.now() / 1000)),
     sign_type: "RSA",
@@ -591,7 +689,7 @@ export async function queryNezhaPaymentAndSync(
   try {
     signedParams = {
       ...params,
-      sign: signNezhaParams(params),
+      sign: signNezhaParams(params, config),
     };
   } catch (error) {
     const message =
@@ -603,7 +701,7 @@ export async function queryNezhaPaymentAndSync(
       orderNo: order.orderNo,
       channel,
       event: "query",
-      requestPayload: getSafeSignDebugPayload(params),
+      requestPayload: getSafeSignDebugPayload(params, config),
       success: false,
       message,
     });
@@ -613,7 +711,7 @@ export async function queryNezhaPaymentAndSync(
   let responsePayload: Record<string, unknown>;
 
   try {
-    const response = await fetch(getQueryUrl(), {
+    const response = await fetch(getQueryUrl(config), {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -640,7 +738,7 @@ export async function queryNezhaPaymentAndSync(
     };
   }
 
-  if (!verifyNezhaParams(responsePayload)) {
+  if (!verifyNezhaParams(responsePayload, config)) {
     await writePaymentLog({
       orderId: order.id,
       orderNo: order.orderNo,

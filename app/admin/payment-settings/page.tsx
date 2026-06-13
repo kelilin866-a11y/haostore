@@ -2,12 +2,15 @@ import { redirect } from "next/navigation";
 import { CreditCard, ExternalLink, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { getAdminSession } from "@/lib/admin-auth";
 import {
   getNezhaConfigIssues,
   getNezhaDisplayDiagnostics,
-  nezhaPayConfig,
+  getNezhaPayConfig,
 } from "@/lib/payments/nezha";
 import {
   isStripePaymentEnabled,
@@ -15,6 +18,13 @@ import {
 } from "@/lib/payment-gateway";
 
 export const dynamic = "force-dynamic";
+
+type PaymentSettingsPageProps = {
+  searchParams?: {
+    saved?: string;
+    error?: string;
+  };
+};
 
 function maskStatus(value: boolean) {
   return value ? "已配置" : "未配置";
@@ -30,9 +40,7 @@ function StatusBadge({ enabled }: { enabled: boolean }) {
 
 function ConfigStatus({ value }: { value: boolean }) {
   return (
-    <Badge variant={value ? "success" : "warning"}>
-      {maskStatus(value)}
-    </Badge>
+    <Badge variant={value ? "success" : "warning"}>{maskStatus(value)}</Badge>
   );
 }
 
@@ -51,7 +59,9 @@ function ValueRow({
     ) : isSecret ? (
       <ConfigStatus value={Boolean(value)} />
     ) : (
-      <span className="break-all font-medium text-primary">{value || "未配置"}</span>
+      <span className="break-all font-medium text-primary">
+        {value || "未配置"}
+      </span>
     );
 
   return (
@@ -62,19 +72,20 @@ function ValueRow({
   );
 }
 
-export default function AdminPaymentSettingsPage() {
+export default async function AdminPaymentSettingsPage({
+  searchParams,
+}: PaymentSettingsPageProps) {
   const session = getAdminSession();
 
   if (!session) {
     redirect("/admin/login?next=/admin/payment-settings");
   }
 
-  const nezhaDiagnostics = getNezhaDisplayDiagnostics();
-  const nezhaIssues = getNezhaConfigIssues();
+  const nezhaConfig = await getNezhaPayConfig();
+  const nezhaDiagnostics = getNezhaDisplayDiagnostics(nezhaConfig);
+  const nezhaIssues = getNezhaConfigIssues(nezhaConfig);
   const isNezhaReady = nezhaIssues.length === 0;
   const isStripeReady = isStripePaymentEnabled();
-  const defaultAlipayProvider = process.env.DEFAULT_ALIPAY_PROVIDER || "nezha";
-  const defaultWxpayProvider = process.env.DEFAULT_WXPAY_PROVIDER || "nezha";
   const nezhaWebhookUrl = new URL(
     "/api/payments/nezha/webhook",
     paymentGatewayConfig.siteUrl,
@@ -111,10 +122,22 @@ export default function AdminPaymentSettingsPage() {
         <p className="text-sm font-semibold text-accentblue">后台管理</p>
         <h1 className="mt-2 text-3xl font-bold text-primary">支付设置</h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
-          当前页面只展示支付通道配置状态，不会修改支付流程、webhook、订单发货或库存扣减逻辑。
-          密钥类配置只显示是否已配置，不显示原文。
+          配置读取优先级为：数据库 Setting &gt; 环境变量 &gt; 默认值。
+          本页只编辑哪吒支付配置，不会修改 Stripe、webhook、订单发货或库存扣减逻辑。
         </p>
       </div>
+
+      {searchParams?.saved ? (
+        <div className="mb-5 rounded-md border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+          支付设置已保存。
+        </div>
+      ) : null}
+
+      {searchParams?.error ? (
+        <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          支付设置保存失败，请稍后重试。
+        </div>
+      ) : null}
 
       <div className="grid gap-5">
         <Card>
@@ -155,9 +178,9 @@ export default function AdminPaymentSettingsPage() {
             <CardContent className="text-sm">
               <ValueRow
                 label="NEZHA_PAY_ENABLED"
-                value={nezhaDiagnostics.nezhaEnabled ? "true" : "false"}
+                value={nezhaConfig.enabled ? "true" : "false"}
               />
-              <ValueRow label="NEZHA_PAY_GATEWAY" value={nezhaPayConfig.gateway} />
+              <ValueRow label="NEZHA_PAY_GATEWAY" value={nezhaConfig.gateway} />
               <ValueRow label="NEZHA_PAY_PID" value={nezhaDiagnostics.hasPid} />
               <ValueRow
                 label="NEZHA_PAY_PRIVATE_KEY"
@@ -171,15 +194,15 @@ export default function AdminPaymentSettingsPage() {
               />
               <ValueRow
                 label="NEZHA_PAY_NOTIFY_URL"
-                value={nezhaPayConfig.notifyUrl}
+                value={nezhaConfig.notifyUrl}
               />
               <ValueRow
                 label="NEZHA_PAY_RETURN_URL"
-                value={nezhaPayConfig.returnUrl}
+                value={nezhaConfig.returnUrl}
               />
               <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
                 私钥解析状态：
-                {nezhaDiagnostics.privateKeyParsed ? "可解析" : "未配置或格式需检查"}
+                {nezhaDiagnostics.privateKeyParsed ? "可解析" : "不可解析或未配置"}
                 。本页不会输出私钥、公钥原文。
               </div>
             </CardContent>
@@ -190,8 +213,14 @@ export default function AdminPaymentSettingsPage() {
               <CardTitle>Stripe 配置状态</CardTitle>
             </CardHeader>
             <CardContent className="text-sm">
-              <ValueRow label="PAYMENT_PROVIDER" value={paymentGatewayConfig.provider} />
-              <ValueRow label="PAYMENT_CURRENCY" value={paymentGatewayConfig.currency} />
+              <ValueRow
+                label="PAYMENT_PROVIDER"
+                value={paymentGatewayConfig.provider}
+              />
+              <ValueRow
+                label="PAYMENT_CURRENCY"
+                value={paymentGatewayConfig.currency}
+              />
               <ValueRow
                 label="NEXT_PUBLIC_PAYMENT_GATEWAY_NAME"
                 value={paymentGatewayConfig.gatewayName}
@@ -213,6 +242,142 @@ export default function AdminPaymentSettingsPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>编辑哪吒支付配置</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              action="/api/admin/payment-settings"
+              method="post"
+              className="grid gap-5"
+            >
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="nezha_pay_enabled">是否启用哪吒支付</Label>
+                  <select
+                    id="nezha_pay_enabled"
+                    name="nezha_pay_enabled"
+                    defaultValue={nezhaConfig.enabled ? "true" : "false"}
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
+                  >
+                    <option value="true">启用</option>
+                    <option value="false">停用</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nezha_pay_gateway">网关地址</Label>
+                  <Input
+                    id="nezha_pay_gateway"
+                    name="nezha_pay_gateway"
+                    defaultValue={nezhaConfig.gateway}
+                    placeholder="https://nzzf.org"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nezha_pay_pid">商户 PID</Label>
+                  <Input
+                    id="nezha_pay_pid"
+                    name="nezha_pay_pid"
+                    defaultValue={nezhaConfig.pid}
+                    placeholder="填写哪吒支付商户 PID"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nezha_pay_return_url">Return URL</Label>
+                  <Input
+                    id="nezha_pay_return_url"
+                    name="nezha_pay_return_url"
+                    defaultValue={nezhaConfig.returnUrl}
+                    placeholder={nezhaReturnUrl}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="nezha_pay_notify_url">Notify URL</Label>
+                  <Input
+                    id="nezha_pay_notify_url"
+                    name="nezha_pay_notify_url"
+                    defaultValue={nezhaConfig.notifyUrl}
+                    placeholder={nezhaWebhookUrl}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="nezha_pay_private_key">
+                    商户私钥
+                    <span className="ml-2 text-xs font-normal text-slate-500">
+                      当前：{maskStatus(nezhaDiagnostics.hasPrivateKey)}
+                    </span>
+                  </Label>
+                  <textarea
+                    id="nezha_pay_private_key"
+                    name="nezha_pay_private_key"
+                    rows={5}
+                    placeholder="留空则不修改，填写新内容则覆盖"
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="nezha_pay_platform_public_key">
+                    平台公钥
+                    <span className="ml-2 text-xs font-normal text-slate-500">
+                      当前：{maskStatus(nezhaDiagnostics.hasPlatformPublicKey)}
+                    </span>
+                  </Label>
+                  <textarea
+                    id="nezha_pay_platform_public_key"
+                    name="nezha_pay_platform_public_key"
+                    rows={5}
+                    placeholder="留空则不修改，填写新内容则覆盖"
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="default_alipay_provider">默认支付宝通道</Label>
+                  <select
+                    id="default_alipay_provider"
+                    name="default_alipay_provider"
+                    defaultValue={nezhaConfig.defaultAlipayProvider}
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
+                  >
+                    <option value="nezha">nezha</option>
+                    <option value="epay" disabled>
+                      epay（预留，未启用）
+                    </option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="default_wxpay_provider">默认微信通道</Label>
+                  <select
+                    id="default_wxpay_provider"
+                    name="default_wxpay_provider"
+                    defaultValue={nezhaConfig.defaultWxpayProvider}
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
+                  >
+                    <option value="nezha">nezha</option>
+                    <option value="epay" disabled>
+                      epay（预留，未启用）
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+                私钥和平台公钥不会明文回显。对应输入框留空时，不会覆盖已有 Setting
+                或环境变量兜底配置。
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button type="submit" variant="deal">
+                  保存支付设置
+                </Button>
+                <Button variant="outline" asChild>
+                  <a href="/admin">返回后台首页</a>
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -243,23 +408,9 @@ export default function AdminPaymentSettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>默认通道与易支付预留</CardTitle>
+            <CardTitle>易支付备用通道预留</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm">
-            <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
-              <div>
-                <p className="text-slate-500">DEFAULT_ALIPAY_PROVIDER 当前值</p>
-                <p className="mt-1 font-mono text-sm text-primary">
-                  {defaultAlipayProvider}
-                </p>
-              </div>
-              <div>
-                <p className="text-slate-500">DEFAULT_WXPAY_PROVIDER 当前值</p>
-                <p className="mt-1 font-mono text-sm text-primary">
-                  {defaultWxpayProvider}
-                </p>
-              </div>
-            </div>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
               <p className="font-semibold">标准易支付 epay 适配器：已预留 / 未启用</p>
               <p className="mt-1 leading-6">

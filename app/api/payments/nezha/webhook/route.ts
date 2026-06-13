@@ -3,6 +3,7 @@ import { PaymentMethod, PaymentStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
 import {
+  getNezhaPayConfig,
   getNezhaPaymentType,
   isNezhaPaymentCode,
   moneyToCents,
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
   const payload = paramsToObject(request.nextUrl.searchParams);
   const orderNo = payload.out_trade_no || "";
   const channel = payload.type || "";
+  const nezhaConfig = await getNezhaPayConfig();
 
   console.log("[nezha/webhook] received", {
     orderNo,
@@ -42,7 +44,7 @@ export async function GET(request: NextRequest) {
     apiTradeNo: payload.api_trade_no,
   });
 
-  if (!verifyNezhaParams(payload)) {
+  if (!verifyNezhaParams(payload, nezhaConfig)) {
     await writePaymentLog({
       orderNo,
       channel,
