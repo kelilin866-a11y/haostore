@@ -130,7 +130,7 @@ export function NezhaPaymentPanel({
       const localStatus = await fetchLocalStatus();
 
       if (localStatus.paymentStatus === "paid") {
-        setMessage("支付成功，订单已付款，等待后台发货。请勿重复付款。");
+        setMessage("支付成功，订单已付款，等待后台发货。");
         return;
       }
 
@@ -165,11 +165,14 @@ export function NezhaPaymentPanel({
     }
 
     setShowPaymentNotice(false);
-    const opened = window.open(payInfo, "_blank", "noopener,noreferrer");
 
-    if (!opened) {
-      window.location.href = payInfo;
+    const opened = window.open(payInfo, "_blank");
+    if (opened) {
+      opened.opener = null;
+      return;
     }
+
+    window.location.href = payInfo;
   }
 
   useEffect(() => {
@@ -203,8 +206,7 @@ export function NezhaPaymentPanel({
           <div>
             <p className="font-semibold text-primary">{statusTitle}</p>
             <p className="mt-1">
-              支付方式：{paymentLabel}。支付后系统会自动检测结果，请勿重复付款。
-              如果页面没有自动更新，可点击“我已付款，检查状态”，或稍后通过订单查询查看。
+              支付方式：{paymentLabel}。支付完成后系统会自动检测付款状态，请勿重复付款。
             </p>
           </div>
         </div>
@@ -215,13 +217,10 @@ export function NezhaPaymentPanel({
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-1 h-5 w-5 shrink-0 text-amber-600" />
             <div>
-              <p className="font-semibold">付款完成后请返回本页面查看结果</p>
+              <p className="font-semibold">付款后请回到本页面</p>
               <p className="mt-1">
-                微信/支付宝付款页面可能不会自动跳回本站。付款完成后，请回到本页面，
-                系统会自动检测付款状态。请勿重复付款。
-              </p>
-              <p className="mt-1">
-                如果页面没有自动更新，可点击“我已付款，检查状态”。
+                微信/支付宝付款页面可能不会自动跳回本站。付款完成后，请回到本页面查看结果。
+                如页面没有自动更新，可点击“我已付款，检查状态”。
               </p>
             </div>
           </div>
@@ -242,7 +241,7 @@ export function NezhaPaymentPanel({
             扫码支付
           </div>
           <p className="mb-4 text-slate-600">
-            请使用微信或支付宝扫码支付，支付后页面会自动检测结果，请勿重复付款。
+            请使用微信或支付宝扫码支付，支付后页面会自动检测结果。
           </p>
           {canDisplayQrImage ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -299,7 +298,7 @@ export function NezhaPaymentPanel({
       ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        {payInfo && !isQrcode ? (
+        {payInfo && !isQrcode && !isPaid ? (
           <Button
             type="button"
             className="bg-[#14B8A6] text-white hover:bg-[#0F9F93]"
@@ -308,26 +307,27 @@ export function NezhaPaymentPanel({
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
             {openPaymentText}
           </Button>
-        ) : isQrcode ? null : (
+        ) : isQrcode || isPaid ? null : (
           <Button disabled>支付页面暂不可用</Button>
         )}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={checkPaymentResult}
-          disabled={isRefreshing}
-        >
-          <RefreshCw className="h-4 w-4" aria-hidden="true" />
-          {isRefreshing ? "正在检查" : "我已付款，检查状态"}
-        </Button>
+        {!isPaid ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={checkPaymentResult}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            {isRefreshing ? "正在检查" : "我已付款，检查状态"}
+          </Button>
+        ) : null}
         <Button variant="outline" asChild>
           <Link href="/order/query">返回订单查询</Link>
         </Button>
       </div>
 
       <p className="text-xs leading-5 text-slate-500">
-        本页面只读取本地订单状态，不会直接根据第三方页面返回参数修改订单。
-        真正付款确认以支付回调验签成功后的状态为准；主动查单仅作为补充确认方式。
+        本页面只读取本地订单状态，付款确认以支付回调或主动查单结果为准。
       </p>
 
       {showPaymentNotice ? (
@@ -347,9 +347,8 @@ export function NezhaPaymentPanel({
                   即将打开微信/支付宝付款页面
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  付款完成后，第三方页面可能不会自动返回本站。
-                  请付款后回到本页面查看结果，系统会自动检测付款状态。
-                  请勿重复付款。
+                  付款页面可能不会自动返回本站。付款完成后，请回到本页面查看结果，
+                  系统会自动检测付款状态。请勿重复付款。
                 </p>
               </div>
               <button
@@ -362,7 +361,11 @@ export function NezhaPaymentPanel({
               </button>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" onClick={() => setShowPaymentNotice(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowPaymentNotice(false)}
+              >
                 取消
               </Button>
               <Button
