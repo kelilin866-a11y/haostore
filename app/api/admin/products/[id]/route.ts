@@ -51,6 +51,15 @@ export async function POST(request: Request, { params }: RouteContext) {
           afterSales: data.afterSales,
           coverImage: data.coverImage,
           status: data.status,
+          deliveryMode: data.deliveryMode,
+          supplierApiBaseUrl: data.supplierApiBaseUrl,
+          supplierAppId: data.supplierAppId,
+          ...(data.supplierAppKey ? { supplierAppKey: data.supplierAppKey } : {}),
+          supplierSharedCode: data.supplierSharedCode,
+          supplierRace: data.supplierRace,
+          supplierSkuJson: data.supplierSkuJson,
+          supplierCardId: data.supplierCardId,
+          supplierDevice: data.supplierDevice,
         },
       });
 

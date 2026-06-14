@@ -22,6 +22,15 @@ export type ParsedProductForm = {
   afterSales: string;
   coverImage: string;
   status: ProductStatus;
+  deliveryMode: string;
+  supplierApiBaseUrl: string;
+  supplierAppId: string;
+  supplierAppKey: string;
+  supplierSharedCode: string;
+  supplierRace: string;
+  supplierSkuJson: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+  supplierCardId: string;
+  supplierDevice: string;
   variants: ParsedVariantForm[];
 };
 
@@ -62,6 +71,18 @@ function getInventoryLines(value: string) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function parseSupplierSkuJson(value: string) {
+  if (!value) {
+    return Prisma.JsonNull;
+  }
+
+  try {
+    return JSON.parse(value) as Prisma.InputJsonValue;
+  } catch {
+    return value;
+  }
 }
 
 function hasVariantInput({
@@ -123,6 +144,15 @@ export function parseProductForm(formData: FormData): ParsedProductForm {
     afterSales: getFormString(formData, "afterSales"),
     coverImage: getFormString(formData, "coverImage"),
     status: formData.get("isActive") ? ProductStatus.active : ProductStatus.inactive,
+    deliveryMode: getFormString(formData, "deliveryMode") || "local_stock",
+    supplierApiBaseUrl: getFormString(formData, "supplierApiBaseUrl"),
+    supplierAppId: getFormString(formData, "supplierAppId"),
+    supplierAppKey: getFormString(formData, "supplierAppKey"),
+    supplierSharedCode: getFormString(formData, "supplierSharedCode"),
+    supplierRace: getFormString(formData, "supplierRace"),
+    supplierSkuJson: parseSupplierSkuJson(getFormString(formData, "supplierSkuJson")),
+    supplierCardId: getFormString(formData, "supplierCardId"),
+    supplierDevice: getFormString(formData, "supplierDevice"),
     variants,
   };
 }

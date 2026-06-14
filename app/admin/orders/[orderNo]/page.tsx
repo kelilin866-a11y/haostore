@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { AdminConfirmButton } from "@/components/site/AdminConfirmButton";
 import { AdminDeliveryContentForm } from "@/components/site/AdminDeliveryContentForm";
 import { AdminPaymentQueryButton } from "@/components/site/AdminPaymentQueryButton";
+import { AdminRetryDeliveryButton } from "@/components/site/AdminRetryDeliveryButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -158,6 +159,8 @@ export default async function AdminOrderDetailPage({
   const canQueryNezhaPayment =
     isNezhaPaymentMethod(order.paymentMethod) && order.paymentStatus !== "paid";
   const thirdPartyTradeNo = latestPaymentRecord?.transactionId || "-";
+  const autoDeliveryStatus = order.autoDeliveryStatus || "未触发";
+  const autoDeliveryMessage = order.autoDeliveryMessage || "-";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -214,6 +217,14 @@ export default async function AdminOrderDetailPage({
               <p>发货时间：{formatDateTime(order.deliveredAt)}</p>
               <p>支付状态：{order.paymentStatus}</p>
               <p>发货状态：{order.deliveryStatus}</p>
+              <p>自动发货状态：{autoDeliveryStatus}</p>
+              <p className="break-all lg:col-span-2">
+                自动发货说明：{autoDeliveryMessage}
+              </p>
+              <p>自动发货尝试时间：{formatDateTime(order.autoDeliveryAttemptedAt)}</p>
+              <p className="break-all">
+                供货商交易号：{order.supplierTradeNo || "-"}
+              </p>
             </div>
 
             <div>
@@ -365,6 +376,13 @@ export default async function AdminOrderDetailPage({
               <div className="grid gap-4">
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
                   订单已付款但尚未发货。点击确认后，系统会使用现有库存扣减逻辑分配库存并生成发货内容。
+                </div>
+                <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+                  <p className="mb-3 font-medium">自动发货</p>
+                  <p className="mb-3">
+                    如果自动发货失败，可在这里重新触发。失败不会取消订单，也不会退款，订单仍保持已付款待发货。
+                  </p>
+                  <AdminRetryDeliveryButton orderNo={order.orderNo} />
                 </div>
                 <textarea
                   value="确认发货后将显示已分配的库存内容。"

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { PaymentMethod, PaymentStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
+import { scheduleAutoDeliveryAfterPayment } from "@/lib/delivery/auto-delivery";
 import {
   getEpayConfig,
   moneyToCents,
@@ -194,6 +195,8 @@ async function handleEpayNotify(payload: Record<string, string>) {
     success: true,
     message: "epay 回调确认付款成功",
   });
+
+  scheduleAutoDeliveryAfterPayment(order.orderNo, "epay_webhook");
 
   return text("success");
 }

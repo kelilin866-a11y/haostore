@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { PaymentMethod, PaymentStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
+import { scheduleAutoDeliveryAfterPayment } from "@/lib/delivery/auto-delivery";
 import {
   getNezhaPayConfig,
   getNezhaPaymentType,
@@ -194,6 +195,8 @@ export async function GET(request: NextRequest) {
     success: true,
     message: "哪吒支付回调确认付款成功",
   });
+
+  scheduleAutoDeliveryAfterPayment(order.orderNo, "nezha_webhook");
 
   return text("success");
 }

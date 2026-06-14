@@ -3,6 +3,7 @@ import { PaymentMethod, Prisma } from "@prisma/client";
 import type Stripe from "stripe";
 
 import { prisma } from "@/lib/db";
+import { scheduleAutoDeliveryAfterPayment } from "@/lib/delivery/auto-delivery";
 import { getStripeClient, paymentGatewayConfig } from "@/lib/payment-gateway";
 
 export const runtime = "nodejs";
@@ -282,6 +283,9 @@ export async function POST(request: Request) {
           result.status,
         );
       }
+      if ("orderNo" in result) {
+        scheduleAutoDeliveryAfterPayment(result.orderNo, "stripe_webhook");
+      }
     } else {
       console.log("[stripe/webhook] checkout session is not paid yet", {
         eventType: event.type,
@@ -307,6 +311,9 @@ export async function POST(request: Request) {
         result.message || "Stripe payment webhook handling failed",
         result.status,
       );
+    }
+    if ("orderNo" in result) {
+      scheduleAutoDeliveryAfterPayment(result.orderNo, "stripe_webhook");
     }
   }
 

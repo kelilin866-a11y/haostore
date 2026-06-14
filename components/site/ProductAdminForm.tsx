@@ -43,6 +43,15 @@ type ProductFormValue = {
   afterSales?: string | null;
   coverImage?: string | null;
   status?: string;
+  deliveryMode?: string | null;
+  supplierApiBaseUrl?: string | null;
+  supplierAppId?: string | null;
+  supplierAppKey?: string | null;
+  supplierSharedCode?: string | null;
+  supplierRace?: string | null;
+  supplierSkuJson?: unknown;
+  supplierCardId?: string | null;
+  supplierDevice?: string | null;
   variants?: ProductVariantFormValue[];
 };
 
@@ -452,6 +461,113 @@ export function ProductAdminForm({
             />
             是否上架
           </label>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>自动发货配置</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="deliveryMode">发货模式</Label>
+              <select
+                id="deliveryMode"
+                name="deliveryMode"
+                defaultValue={product?.deliveryMode ?? "local_stock"}
+                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
+              >
+                <option value="local_stock">本地库存自动发货</option>
+                <option value="supplier_api">供货商 API 自动发货</option>
+                <option value="manual">人工发货</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supplierApiBaseUrl">供货商 API 地址</Label>
+              <Input
+                id="supplierApiBaseUrl"
+                name="supplierApiBaseUrl"
+                defaultValue={product?.supplierApiBaseUrl ?? ""}
+                placeholder="https://api.example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supplierAppId">app_id</Label>
+              <Input
+                id="supplierAppId"
+                name="supplierAppId"
+                defaultValue={product?.supplierAppId ?? ""}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supplierAppKey">
+                app_key
+                <span className="ml-2 text-xs font-normal text-slate-500">
+                  当前：{product?.supplierAppKey ? "已配置" : "未配置"}
+                </span>
+              </Label>
+              <Input
+                id="supplierAppKey"
+                name="supplierAppKey"
+                type="password"
+                placeholder="留空则不修改，填写新内容则覆盖"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supplierSharedCode">shared_code</Label>
+              <Input
+                id="supplierSharedCode"
+                name="supplierSharedCode"
+                defaultValue={product?.supplierSharedCode ?? ""}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supplierRace">race</Label>
+              <Input
+                id="supplierRace"
+                name="supplierRace"
+                defaultValue={product?.supplierRace ?? ""}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supplierCardId">card_id</Label>
+              <Input
+                id="supplierCardId"
+                name="supplierCardId"
+                defaultValue={product?.supplierCardId ?? ""}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supplierDevice">device</Label>
+              <Input
+                id="supplierDevice"
+                name="supplierDevice"
+                defaultValue={product?.supplierDevice ?? "pc"}
+                placeholder="pc"
+              />
+            </div>
+            <div className="space-y-2 md:col-span-3">
+              <Label htmlFor="supplierSkuJson">sku 配置</Label>
+              <textarea
+                id="supplierSkuJson"
+                name="supplierSkuJson"
+                defaultValue={
+                  typeof product?.supplierSkuJson === "string"
+                    ? product.supplierSkuJson
+                    : product?.supplierSkuJson
+                      ? JSON.stringify(product.supplierSkuJson, null, 2)
+                      : ""
+                }
+                rows={4}
+                placeholder='可填写单个 sku，或 JSON：{"default":"sku001","本地规格SKU":"supplier-sku"}'
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 font-mono text-xs text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
+              />
+              <p className="text-xs leading-5 text-slate-500">
+                本地库存商品无需填写供货商配置。供货商 API 模式会使用订单号作为 request_no，app_key 不会明文展示。
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

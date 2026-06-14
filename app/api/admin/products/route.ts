@@ -44,6 +44,15 @@ export async function POST(request: Request) {
           afterSales: data.afterSales,
           coverImage: data.coverImage,
           status: data.status,
+          deliveryMode: data.deliveryMode,
+          supplierApiBaseUrl: data.supplierApiBaseUrl,
+          supplierAppId: data.supplierAppId,
+          supplierAppKey: data.supplierAppKey,
+          supplierSharedCode: data.supplierSharedCode,
+          supplierRace: data.supplierRace,
+          supplierSkuJson: data.supplierSkuJson,
+          supplierCardId: data.supplierCardId,
+          supplierDevice: data.supplierDevice,
         },
       });
 

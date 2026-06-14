@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { PaymentMethod, PaymentStatus, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
+import { scheduleAutoDeliveryAfterPayment } from "@/lib/delivery/auto-delivery";
 import { getAbsoluteUrl } from "@/lib/payment-gateway";
 
 export type NezhaPaymentCode = "nezha_alipay" | "nezha_wxpay";
@@ -880,6 +881,8 @@ export async function queryNezhaPaymentAndSync(
     success: true,
     message: "主动查单确认付款成功",
   });
+
+  scheduleAutoDeliveryAfterPayment(order.orderNo, "nezha_query");
 
   return {
     ok: true,
