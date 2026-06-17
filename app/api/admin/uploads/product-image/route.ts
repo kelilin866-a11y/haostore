@@ -6,6 +6,7 @@ import { getAdminSession } from "@/lib/admin-auth";
 export const runtime = "nodejs";
 
 const maxImageSize = 5 * 1024 * 1024;
+const ossUploadTimeoutMs = 20_000;
 const allowedImageTypes = new Map([
   ["image/jpeg", "jpg"],
   ["image/jpg", "jpg"],
@@ -21,32 +22,59 @@ type OssConfig = {
   publicBaseUrl: string;
 };
 
-function getOssConfig(): OssConfig | null {
-  const region = process.env.ALIYUN_OSS_REGION?.trim();
-  const accessKeyId = process.env.ALIYUN_OSS_ACCESS_KEY_ID?.trim();
-  const accessKeySecret = process.env.ALIYUN_OSS_ACCESS_KEY_SECRET?.trim();
-  const bucket = process.env.ALIYUN_OSS_BUCKET?.trim();
-  const publicBaseUrl = process.env.ALIYUN_OSS_PUBLIC_BASE_URL?.trim();
+function getEnvValue(primaryKey: string, fallbackKey: string) {
+  return (
+    process.env[primaryKey]?.trim() || process.env[fallbackKey]?.trim() || ""
+  );
+}
 
-  if (!region || !accessKeyId || !accessKeySecret || !bucket || !publicBaseUrl) {
-    return null;
-  }
-
-  return {
-    region,
-    accessKeyId,
-    accessKeySecret,
-    bucket,
-    publicBaseUrl,
+function getOssConfig() {
+  const config: OssConfig = {
+    region: getEnvValue("ALIYUN_OSS_REGION", "ALI_OSS_REGION"),
+    accessKeyId: getEnvValue(
+      "ALIYUN_OSS_ACCESS_KEY_ID",
+      "ALI_OSS_ACCESS_KEY_ID",
+    ),
+    accessKeySecret: getEnvValue(
+      "ALIYUN_OSS_ACCESS_KEY_SECRET",
+      "ALI_OSS_ACCESS_KEY_SECRET",
+    ),
+    bucket: getEnvValue("ALIYUN_OSS_BUCKET", "ALI_OSS_BUCKET"),
+    publicBaseUrl: getEnvValue(
+      "ALIYUN_OSS_PUBLIC_BASE_URL",
+      "ALI_OSS_PUBLIC_BASE_URL",
+    ),
   };
+  const missing = [
+    ["ALIYUN_OSS_REGION / ALI_OSS_REGION", config.region],
+    ["ALIYUN_OSS_ACCESS_KEY_ID / ALI_OSS_ACCESS_KEY_ID", config.accessKeyId],
+    [
+      "ALIYUN_OSS_ACCESS_KEY_SECRET / ALI_OSS_ACCESS_KEY_SECRET",
+      config.accessKeySecret,
+    ],
+    ["ALIYUN_OSS_BUCKET / ALI_OSS_BUCKET", config.bucket],
+    [
+      "ALIYUN_OSS_PUBLIC_BASE_URL / ALI_OSS_PUBLIC_BASE_URL",
+      config.publicBaseUrl,
+    ],
+  ]
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  return { config, missing };
 }
 
 function normalizeRegion(region: string) {
-  return region.startsWith("oss-") ? region : `oss-${region}`;
+  const trimmed = region.trim().replace(/^https?:\/\//i, "");
+  const withoutDomain = trimmed.replace(/\.aliyuncs\.com\/?$/i, "");
+
+  return withoutDomain.startsWith("oss-")
+    ? withoutDomain
+    : `oss-${withoutDomain}`;
 }
 
-function getOssEndpoint({ bucket, region }: Pick<OssConfig, "bucket" | "region">) {
-  return `https://${bucket}.${normalizeRegion(region)}.aliyuncs.com`;
+function getOssEndpoint(region: string) {
+  return `https://${normalizeRegion(region)}.aliyuncs.com`;
 }
 
 function getPublicUrl(baseUrl: string, objectKey: string) {
@@ -87,18 +115,108 @@ function jsonError(error: string, status = 400) {
   return NextResponse.json({ ok: false, error }, { status });
 }
 
+type ErrorMeta = {
+  name: string;
+  message: string;
+  code?: string;
+  cause?: ErrorMeta;
+};
+
+function getErrorMeta(error: unknown): ErrorMeta {
+  if (!error || typeof error !== "object") {
+    return { name: "UnknownError", message: String(error || "unknown") };
+  }
+
+  const record = error as Record<string, unknown>;
+  return {
+    name:
+      typeof record.name === "string" ? record.name : error.constructor.name,
+    message: typeof record.message === "string" ? record.message : "unknown",
+    code: typeof record.code === "string" ? record.code : undefined,
+    cause:
+      typeof record.cause === "object" && record.cause
+        ? getErrorMeta(record.cause)
+        : undefined,
+  };
+}
+
+function logOssUploadError({
+  config,
+  endpoint,
+  error,
+  status,
+  responseText,
+}: {
+  config: OssConfig;
+  endpoint: string;
+  error?: unknown;
+  status?: number;
+  responseText?: string;
+}) {
+  console.error("[oss/product-image] upload failed", {
+    region: config.region,
+    normalizedRegion: normalizeRegion(config.region),
+    bucketConfigured: Boolean(config.bucket),
+    publicBaseUrlConfigured: Boolean(config.publicBaseUrl),
+    endpoint,
+    status,
+    responseText,
+    error: error ? getErrorMeta(error) : undefined,
+  });
+}
+
+async function putObjectWithTimeout({
+  uploadUrl,
+  headers,
+  body,
+}: {
+  uploadUrl: string;
+  headers: HeadersInit;
+  body: ArrayBuffer;
+}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ossUploadTimeoutMs);
+
+  try {
+    return await fetch(uploadUrl, {
+      method: "PUT",
+      headers,
+      body,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function POST(request: Request) {
   if (!getAdminSession()) {
     return jsonError("未登录或后台登录已过期，请重新登录。", 401);
   }
 
-  const config = getOssConfig();
+  const { config, missing } = getOssConfig();
 
-  if (!config) {
-    return jsonError("OSS 环境变量未配置，请先配置 ALIYUN_OSS_*", 400);
+  if (missing.length > 0) {
+    console.error("[oss/product-image] config missing", {
+      missing,
+      region: config.region,
+      bucketConfigured: Boolean(config.bucket),
+      publicBaseUrlConfigured: Boolean(config.publicBaseUrl),
+    });
+    return jsonError(`OSS 环境变量未配置完整：${missing.join("、")}`, 400);
   }
 
-  const formData = await request.formData();
+  let formData: FormData;
+
+  try {
+    formData = await request.formData();
+  } catch (error) {
+    console.error("[oss/product-image] parse multipart form failed", {
+      error: getErrorMeta(error),
+    });
+    return jsonError("图片上传请求解析失败，请重新选择图片后再试。", 400);
+  }
+
   const file = formData.get("file");
 
   if (!(file instanceof File)) {
@@ -124,32 +242,51 @@ export async function POST(request: Request) {
     contentType: file.type,
     date,
   });
-  const endpoint = getOssEndpoint(config);
-  const uploadUrl = `${endpoint}/${objectKey}`;
+  const endpoint = getOssEndpoint(config.region);
+  const uploadUrl = `${endpoint}/${config.bucket}/${objectKey}`;
 
   try {
-    const response = await fetch(uploadUrl, {
-      method: "PUT",
+    const fileBuffer = await file.arrayBuffer();
+    const response = await putObjectWithTimeout({
+      uploadUrl,
       headers: {
         Authorization: `OSS ${config.accessKeyId}:${signature}`,
         "Content-Type": file.type,
         Date: date,
       },
-      body: Buffer.from(await file.arrayBuffer()),
+      body: fileBuffer,
     });
 
     if (!response.ok) {
       const responseText = await response.text();
-      console.error("OSS product image upload failed", {
+      logOssUploadError({
+        config,
+        endpoint,
         status: response.status,
         responseText,
       });
 
-      return jsonError("OSS 上传失败，请检查 Bucket、Region、权限和 CDN 域名配置。", 500);
+      return jsonError(
+        `OSS 上传失败，状态码 ${response.status}。请检查 Bucket、Region、AccessKey 权限和 Public Base URL。`,
+        502,
+      );
     }
   } catch (error) {
-    console.error("OSS product image upload request failed", error);
-    return jsonError("OSS 上传失败，请检查网络和 OSS 配置。", 500);
+    logOssUploadError({ config, endpoint, error });
+
+    if (error instanceof Error && error.name === "AbortError") {
+      return jsonError(
+        `OSS 上传超时，已超过 ${ossUploadTimeoutMs / 1000} 秒。请检查服务器到 OSS endpoint 的网络、Region 和 Bucket 配置。`,
+        504,
+      );
+    }
+
+    return jsonError(
+      error instanceof Error
+        ? `OSS 上传请求失败：${error.name || "Error"} ${error.message}`
+        : "OSS 上传请求失败，请检查网络和 OSS 配置。",
+      502,
+    );
   }
 
   return NextResponse.json({
