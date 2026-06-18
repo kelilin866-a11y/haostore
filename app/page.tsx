@@ -251,6 +251,13 @@ export default async function HomePage() {
               </Link>
             </Button>
           </div>
+
+          <Link
+            href="/tg"
+            className="mt-6 inline-flex rounded-full border border-[#E2E8F0] bg-white px-4 py-2 text-sm font-medium text-[#1E3A8A] shadow-sm transition hover:border-[#14B8A6] hover:text-[#0F9F93]"
+          >
+            TG账号 / Telegram账号 / 飞机号
+          </Link>
         </div>
       </section>
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Info } from "lucide-react";
 
@@ -19,6 +20,56 @@ import {
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+const telegramCategoryKeywords = ["telegram", "tg", "电报", "飞机号", "纸飞机"];
+
+function isTelegramCategory(category: { name: string; slug: string }) {
+  const target = `${category.name} ${category.slug}`.toLowerCase();
+  return telegramCategoryKeywords.some((keyword) =>
+    target.includes(keyword.toLowerCase()),
+  );
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const product = await prisma.product.findFirst({
+    where: {
+      slug: params.slug,
+      status: "active",
+    },
+    select: {
+      title: true,
+      summary: true,
+      seoTitle: true,
+      seoDescription: true,
+      category: {
+        select: {
+          name: true,
+          slug: true,
+        },
+      },
+    },
+  });
+
+  if (!product) {
+    return {};
+  }
+
+  if (isTelegramCategory(product.category)) {
+    return {
+      title: `${product.title} - 好贸Go`,
+      description: product.seoDescription || product.summary || undefined,
+    };
+  }
+
+  return {
+    title: product.seoTitle || undefined,
+    description: product.seoDescription || product.summary || undefined,
+  };
+}
 
 function getHttpImageUrl(value: string | null) {
   if (!value) {

@@ -30,6 +30,7 @@ function staticEntry(
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     staticEntry("/", 1, "daily"),
+    staticEntry("/tg", 0.8, "weekly"),
     staticEntry("/products", 0.9, "daily"),
     staticEntry("/blog", 0.7, "weekly"),
     staticEntry("/order/query", 0.5, "monthly"),
