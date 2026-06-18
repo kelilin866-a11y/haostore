@@ -13,6 +13,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: settings.default_seo_title,
     description: settings.default_seo_description,
+    other: {
+      "baidu-site-verification": "codeva-2VOilutMTo",
+    },
   };
 }
 
