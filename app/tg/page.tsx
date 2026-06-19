@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
+  BookOpen,
+  CalendarDays,
   CheckCircle2,
   HelpCircle,
   MessageCircle,
@@ -9,7 +11,7 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
-import { ProductStatus, VariantStatus } from "@prisma/client";
+import { ArticleStatus, ProductStatus, VariantStatus } from "@prisma/client";
 
 import { ProductCard } from "@/components/site/ProductCard";
 import { Badge } from "@/components/ui/badge";
@@ -19,13 +21,21 @@ import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://haomaogo.com").replace(
+  /\/$/,
+  "",
+);
+
 export const metadata: Metadata = {
   title: "TG账号购买｜Telegram账号｜飞机号资源 - 好贸Go",
   description:
-    "好贸Go提供TG账号、Telegram账号、飞机号等账号资源，适合跨境沟通、社群运营、频道管理和工具测试等场景，支持零售购买、订单查询和售后咨询。",
+    "好贸Go提供TG账号、Telegram账号、飞机号、纸飞机号、电报号等账号资源，适合跨境沟通、社群运营、频道管理和工具测试等场景，支持零售购买、订单查询和售后咨询。",
+  alternates: {
+    canonical: `${siteUrl}/tg`,
+  },
 };
 
-const telegramCategoryKeywords = ["telegram", "tg", "电报", "飞机号", "纸飞机"];
+const telegramKeywords = ["telegram", "tg", "电报", "飞机号", "纸飞机"];
 
 const scenarios = [
   "跨境沟通",
@@ -69,39 +79,98 @@ const faqs = [
     answer:
       "请保留订单号和下单联系方式，通过售后客服页面联系处理，方便客服核对订单和发货记录。",
   },
+  {
+    question: "飞机号和TG号有什么区别？",
+    answer:
+      "飞机号是 Telegram 账号的通俗叫法，TG号则来自 Telegram 的简称。两者在购买场景中通常指同类账号资源，实际差异主要看商品规格、账号资料和是否包含 2FA 等信息。",
+  },
+  {
+    question: "Telegram账号购买前需要注意什么？",
+    answer:
+      "购买前建议先查看商品规格、库存、发货格式和售后规则，确认是否需要邮箱、2FA 或其他辅助资料。下单后请保存订单号，后续可通过订单查询查看状态或联系售后。",
+  },
 ];
 
+function matchesTelegramKeywords(value: string | null | undefined) {
+  if (!value) {
+    return false;
+  }
+
+  const target = value.toLowerCase();
+  return telegramKeywords.some((keyword) => target.includes(keyword.toLowerCase()));
+}
+
 function isTelegramCategory(category: { name: string; slug: string }) {
-  const target = `${category.name} ${category.slug}`.toLowerCase();
-  return telegramCategoryKeywords.some((keyword) =>
-    target.includes(keyword.toLowerCase()),
+  return matchesTelegramKeywords(`${category.name} ${category.slug}`);
+}
+
+function getArticleExcerpt(article: {
+  summary: string | null;
+  seoDescription: string | null;
+  content: string;
+}) {
+  return (
+    article.summary ||
+    article.seoDescription ||
+    article.content.replace(/\s+/g, " ").slice(0, 90)
   );
 }
 
+function formatDate(date: Date | null) {
+  if (!date) {
+    return "待发布";
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 export default async function TgTopicPage() {
-  const products = await prisma.product.findMany({
-    where: {
-      status: ProductStatus.active,
-      category: {
-        isActive: true,
+  const [products, articles] = await Promise.all([
+    prisma.product.findMany({
+      where: {
+        status: ProductStatus.active,
+        category: {
+          isActive: true,
+        },
       },
-    },
-    include: {
-      category: true,
-      variants: {
-        where: { status: VariantStatus.active },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      include: {
+        category: true,
+        variants: {
+          where: { status: VariantStatus.active },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        },
+        inventoryItems: {
+          where: { status: "available" },
+          select: { id: true },
+        },
       },
-      inventoryItems: {
-        where: { status: "available" },
-        select: { id: true },
-      },
-    },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-  });
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    }),
+    prisma.article.findMany({
+      where: { status: ArticleStatus.published },
+      include: { category: true },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+      take: 50,
+    }),
+  ]);
   const telegramProducts = products.filter((product) =>
     isTelegramCategory(product.category),
   );
+  const relatedArticles = articles
+    .filter((article) => {
+      const categoryText = `${article.category.name} ${article.category.slug}`;
+      const articleText = `${article.title} ${article.slug} ${article.summary ?? ""}`;
+
+      return (
+        matchesTelegramKeywords(categoryText) || matchesTelegramKeywords(articleText)
+      );
+    })
+    .slice(0, 6);
 
   return (
     <main className="bg-[#F8FAFC] text-[#0F172A]">
@@ -115,9 +184,7 @@ export default async function TgTopicPage() {
             TG账号购买
           </h1>
           <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-[#64748B] sm:text-lg">
-            好贸Go提供 TG账号、Telegram账号、飞机号、纸飞机号、电报号等虚拟账号资源，
-            适合跨境沟通、社群运营、频道管理和工具测试等场景。用户可按规格零售购买，
-            通过订单查询查看状态，并在需要时联系售后客服。
+            好贸Go提供 TG账号、Telegram账号、飞机号、纸飞机号、电报号等账号资源，适合跨境沟通、社群运营、频道管理和工具测试等场景。支持零售购买、按规格选择、订单查询和售后协助。
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button className="bg-[#14B8A6] text-white hover:bg-[#0F9F93]" asChild>
@@ -144,9 +211,11 @@ export default async function TgTopicPage() {
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-[#2563EB]">TG账号商品</p>
-            <h2 className="mt-2 text-3xl font-bold">Telegram / TG 商品列表</h2>
+            <h2 className="mt-2 text-3xl font-bold">
+              TG账号 / Telegram账号购买列表
+            </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#64748B]">
-              以下商品来自后台已上架的 Telegram / TG 相关分类，点击商品可进入详情页选择规格并下单。
+              以下为已上架的 TG账号、Telegram账号、飞机号相关商品，点击商品可进入详情页查看规格、价格、发货说明和售后规则。
             </p>
           </div>
           <Button variant="outline" className="border-[#E2E8F0]" asChild>
@@ -301,6 +370,53 @@ export default async function TgTopicPage() {
           </Card>
         </div>
       </section>
+
+      {relatedArticles.length > 0 ? (
+        <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[#2563EB]">账号教程</p>
+              <h2 className="mt-2 text-3xl font-bold">TG账号相关教程</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#64748B]">
+                查看 Telegram账号使用、TG号登录、订单查询和售后处理等相关说明，购买前后都更清楚。
+              </p>
+            </div>
+            <Button variant="outline" className="border-[#E2E8F0]" asChild>
+              <Link href="/blog">查看全部教程</Link>
+            </Button>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {relatedArticles.map((article) => (
+              <Link
+                key={article.id}
+                href={`/blog/${encodeURIComponent(article.slug)}`}
+                className="group rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#BFDBFE] hover:shadow-xl"
+              >
+                <div className="flex items-center justify-between gap-3 text-xs text-[#64748B]">
+                  <span className="rounded-full bg-[#EFF6FF] px-3 py-1 font-medium text-[#2563EB]">
+                    {article.category.name}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                    {formatDate(article.publishedAt)}
+                  </span>
+                </div>
+                <h3 className="mt-4 line-clamp-2 text-lg font-semibold leading-7 text-[#0F172A]">
+                  {article.title}
+                </h3>
+                <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#64748B]">
+                  {getArticleExcerpt(article)}
+                </p>
+                <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-[#14B8A6]">
+                  阅读全文
+                  <BookOpen className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }
