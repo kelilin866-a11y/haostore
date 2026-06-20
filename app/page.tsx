@@ -9,12 +9,10 @@ import {
   CreditCard,
   HelpCircle,
   Headphones,
-  Mail,
   MessageCircle,
   PackageCheck,
   Search,
   Send,
-  ShieldCheck,
   ShoppingBag,
   Store,
 } from "lucide-react";
@@ -114,11 +112,30 @@ const faqItems = [
   },
   {
     question: "支付成功后会立即显示发货内容吗？",
-    answer: "不会。系统确认付款状态后，仍由后台管理员人工确认发货。",
+    answer: "不会。系统确认付款后进入待发货状态，后台确认发货后才会显示内容。",
   },
   {
     question: "如何查看订单和发货内容？",
-    answer: "通过订单查询页输入订单号或下单联系方式，即可查看订单状态。",
+    answer: "进入订单查询页，输入订单号或联系方式即可查看订单状态。",
+  },
+];
+
+const guaranteeItems = [
+  {
+    title: "支付成功后进入待发货状态",
+    description: "系统确认付款后，订单会进入待发货状态。",
+  },
+  {
+    title: "后台确认后显示发货内容",
+    description: "未发货前不会展示账号、卡密等敏感内容。",
+  },
+  {
+    title: "支持订单查询",
+    description: "可通过订单号或联系方式查询订单状态和发货内容。",
+  },
+  {
+    title: "遇到问题可联系售后",
+    description: "请提供订单号和联系方式，方便核对处理。",
   },
 ];
 
@@ -476,14 +493,33 @@ export default async function HomePage() {
 
       <section className="bg-[#F1F5F9]">
         <div className="mx-auto grid max-w-6xl gap-5 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_1.15fr] lg:items-start">
-          <div>
+          <div className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold text-[#2563EB]">FAQ / 售后说明</p>
             <h2 className="mt-2 text-3xl font-bold text-[#0F172A]">
-              下单前后的关键信息
+              购买前后的常见问题
             </h2>
             <p className="mt-3 text-sm leading-6 text-[#64748B]">
-              售后沟通请提供订单号和联系方式，便于核验支付状态与发货记录。
+              下单、付款、发货和售后处理都有清晰流程，购买前可先了解以下说明。
             </p>
+
+            <div className="mt-6 space-y-3">
+              {guaranteeItems.map((item) => (
+                <div key={item.title} className="flex gap-3">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#ECFDF5] text-[#14B8A6]">
+                    <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-[#0F172A]">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-[#64748B]">
+                      {item.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Button className="bg-[#14B8A6] text-white hover:bg-[#0F9F93]" asChild>
                 <Link href="/order/query">
@@ -502,54 +538,38 @@ export default async function HomePage() {
                 </Link>
               </Button>
             </div>
+
+            <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium text-[#2563EB]">
+              <Link href="/contact" className="hover:text-[#14B8A6]">
+                联系售后
+              </Link>
+              <Link href="/policy/after-sales" className="hover:text-[#14B8A6]">
+                售后政策
+              </Link>
+            </div>
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {faqItems.map((item) => (
               <div
                 key={item.question}
-                className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm"
+                className="rounded-2xl border border-[#E2E8F0] bg-white p-4 shadow-sm"
               >
                 <div className="flex gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-[#2563EB]">
-                    <HelpCircle className="h-5 w-5" aria-hidden="true" />
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-[#2563EB]">
+                    <HelpCircle className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <div>
-                    <h3 className="font-semibold text-[#0F172A]">
+                    <h3 className="text-sm font-semibold text-[#0F172A]">
                       {item.question}
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-[#64748B]">
+                    <p className="mt-1.5 text-sm leading-6 text-[#64748B]">
                       {item.answer}
                     </p>
                   </div>
                 </div>
               </div>
             ))}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Link
-                href="/contact"
-                className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                <Mail className="h-6 w-6 text-[#14B8A6]" aria-hidden="true" />
-                <h3 className="mt-3 font-semibold text-[#0F172A]">售后客服</h3>
-                <p className="mt-2 text-sm leading-6 text-[#64748B]">
-                  遇到发货内容或订单状态问题，可通过客服入口提交订单号。
-                </p>
-              </Link>
-              <Link
-                href="/policy/after-sales"
-                className="rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                <ShieldCheck
-                  className="h-6 w-6 text-[#2563EB]"
-                  aria-hidden="true"
-                />
-                <h3 className="mt-3 font-semibold text-[#0F172A]">售后政策</h3>
-                <p className="mt-2 text-sm leading-6 text-[#64748B]">
-                  查看发货核验、售后条件和联系方式要求。
-                </p>
-              </Link>
-            </div>
           </div>
         </div>
       </section>
