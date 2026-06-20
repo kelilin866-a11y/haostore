@@ -23,7 +23,7 @@ import { ProductCard } from "@/components/site/ProductCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
-import { getSiteSettings } from "@/lib/site-settings";
+import { getSiteSettings, type SiteSettings } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -78,32 +78,34 @@ const fallbackCategoryMeta = {
   tint: "bg-blue-50 text-blue-600",
 };
 
-const flowSteps = [
+function buildFlowSteps(settings: SiteSettings) {
+  return [
   {
     step: "Step 01",
-    title: "选择商品",
-    description: "从分类或热门商品进入详情，查看价格、库存和发货格式。",
+    title: settings.home_purchase_step_1_title,
+    description: settings.home_purchase_step_1_description,
     icon: ShoppingBag,
   },
   {
     step: "Step 02",
-    title: "提交订单",
-    description: "选择规格和数量，填写联系方式，无需注册和购物车。",
+    title: settings.home_purchase_step_2_title,
+    description: settings.home_purchase_step_2_description,
     icon: CheckCircle2,
   },
   {
     step: "Step 03",
-    title: "在线支付",
-    description: "使用 Stripe Checkout 在线支付，系统通过 webhook 确认付款。",
+    title: settings.home_purchase_step_3_title,
+    description: settings.home_purchase_step_3_description,
     icon: CreditCard,
   },
   {
     step: "Step 04",
-    title: "确认发货",
-    description: "后台确认发货后，用户可通过订单查询查看发货内容。",
+    title: settings.home_purchase_step_4_title,
+    description: settings.home_purchase_step_4_description,
     icon: PackageCheck,
   },
-];
+  ];
+}
 
 const faqItems = [
   {
@@ -201,6 +203,7 @@ export default async function HomePage() {
   const heroCategories = categories
     .filter((category) => category.slug && category._count.products > 0)
     .slice(0, 12);
+  const flowSteps = buildFlowSteps(settings);
 
   return (
     <main className="overflow-hidden bg-[#F8FAFC] text-[#0F172A]">

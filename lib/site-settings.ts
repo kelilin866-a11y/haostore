@@ -255,7 +255,7 @@ export const editableSettingFields = [
     fallback: "SEO 文章后台管理",
   },
   {
-    key: "purchase_step_1_title",
+    key: "home_purchase_step_1_title",
     label: "购买流程 1 标题",
     description: "首页购买流程第一步标题。",
     inputType: "input",
@@ -263,7 +263,7 @@ export const editableSettingFields = [
     fallback: "选择商品",
   },
   {
-    key: "purchase_step_1_description",
+    key: "home_purchase_step_1_description",
     label: "购买流程 1 描述",
     description: "首页购买流程第一步描述。",
     inputType: "textarea",
@@ -271,7 +271,7 @@ export const editableSettingFields = [
     fallback: "浏览账号类、卡密类和教程类文本商品，查看价格、库存和发货格式。",
   },
   {
-    key: "purchase_step_2_title",
+    key: "home_purchase_step_2_title",
     label: "购买流程 2 标题",
     description: "首页购买流程第二步标题。",
     inputType: "input",
@@ -279,7 +279,7 @@ export const editableSettingFields = [
     fallback: "填写联系方式",
   },
   {
-    key: "purchase_step_2_description",
+    key: "home_purchase_step_2_description",
     label: "购买流程 2 描述",
     description: "首页购买流程第二步描述。",
     inputType: "textarea",
@@ -287,7 +287,7 @@ export const editableSettingFields = [
     fallback: "无需注册、无需购物车，在商品详情页直接下单并留下联系方式。",
   },
   {
-    key: "purchase_step_3_title",
+    key: "home_purchase_step_3_title",
     label: "购买流程 3 标题",
     description: "首页购买流程第三步标题。",
     inputType: "input",
@@ -295,7 +295,7 @@ export const editableSettingFields = [
     fallback: "确认支付",
   },
   {
-    key: "purchase_step_3_description",
+    key: "home_purchase_step_3_description",
     label: "购买流程 3 描述",
     description: "首页购买流程第三步描述。",
     inputType: "textarea",
@@ -303,7 +303,7 @@ export const editableSettingFields = [
     fallback: "支持 Stripe Checkout 在线支付，支付成功后系统通过 Stripe webhook 自动确认付款状态。",
   },
   {
-    key: "purchase_step_4_title",
+    key: "home_purchase_step_4_title",
     label: "购买流程 4 标题",
     description: "首页购买流程第四步标题。",
     inputType: "input",
@@ -311,7 +311,7 @@ export const editableSettingFields = [
     fallback: "确认发货",
   },
   {
-    key: "purchase_step_4_description",
+    key: "home_purchase_step_4_description",
     label: "购买流程 4 描述",
     description: "首页购买流程第四步描述。",
     inputType: "textarea",
@@ -524,6 +524,14 @@ export type SiteSettings = Record<EditableSettingKey, string>;
 const legacySettingKeys: Partial<Record<EditableSettingKey, string[]>> = {
   customer_service_telegram: ["customer_telegram"],
   customer_service_email: ["customer_email"],
+  home_purchase_step_1_title: ["purchase_step_1_title"],
+  home_purchase_step_1_description: ["purchase_step_1_description"],
+  home_purchase_step_2_title: ["purchase_step_2_title"],
+  home_purchase_step_2_description: ["purchase_step_2_description"],
+  home_purchase_step_3_title: ["purchase_step_3_title"],
+  home_purchase_step_3_description: ["purchase_step_3_description"],
+  home_purchase_step_4_title: ["purchase_step_4_title"],
+  home_purchase_step_4_description: ["purchase_step_4_description"],
 };
 
 function getEnvFallback(field: EditableSettingField) {
