@@ -36,6 +36,7 @@ export async function POST(request: Request) {
         slug: data.slug,
         summary: data.summary,
         content: data.content,
+        coverImage: data.coverImage,
         seoTitle: data.seoTitle,
         seoDescription: data.seoDescription,
         status: data.status,

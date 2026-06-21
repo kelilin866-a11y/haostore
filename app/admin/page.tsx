@@ -23,6 +23,7 @@ const modules = [
   { title: "订单管理", icon: FileText, href: "/admin/orders" },
   { title: "支付设置", icon: CreditCard, href: "/admin/payment-settings" },
   { title: "SEO文章管理", icon: Newspaper, href: "/admin/articles" },
+  { title: "SEO文章生成器", icon: FileText, href: "/admin/seo-generator" },
   { title: "文章分类管理", icon: FolderTree, href: "/admin/article-categories" },
   { title: "站点设置", icon: Settings, href: "/admin/settings" },
 ];

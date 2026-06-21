@@ -9,6 +9,7 @@ export type ParsedArticleForm = {
   slug: string;
   summary: string;
   content: string;
+  coverImage: string;
   seoTitle: string;
   seoDescription: string;
   status: ArticleStatus;
@@ -53,6 +54,7 @@ export function parseArticleForm(formData: FormData): ParsedArticleForm {
     slug: getFormString(formData, "slug"),
     summary: getFormString(formData, "summary"),
     content: getFormString(formData, "content"),
+    coverImage: getFormString(formData, "coverImage"),
     seoTitle: getFormString(formData, "seoTitle"),
     seoDescription: getFormString(formData, "seoDescription"),
     status: parseArticleStatus(getFormString(formData, "status")),

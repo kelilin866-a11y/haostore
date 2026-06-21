@@ -15,6 +15,7 @@ const adminLinks = [
   { href: "/admin/orders", label: "订单管理" },
   { href: "/admin/payment-settings", label: "支付设置" },
   { href: "/admin/articles", label: "SEO文章管理" },
+  { href: "/admin/seo-generator", label: "SEO生成器" },
   { href: "/admin/article-categories", label: "文章分类" },
   { href: "/admin/settings", label: "站点设置" },
   { href: "/", label: "前台首页" },

@@ -23,6 +23,16 @@ function formatDate(date: Date | null) {
   return date.toLocaleDateString("zh-CN");
 }
 
+function getHttpImageUrl(value: string | null | undefined) {
+  const url = value?.trim();
+
+  if (!url || !/^https?:\/\//i.test(url)) {
+    return null;
+  }
+
+  return url;
+}
+
 function getFaqItems(value: unknown): FaqItem[] {
   if (!Array.isArray(value)) {
     return [];
@@ -209,6 +219,7 @@ export default async function BlogDetailPage({
   ]);
 
   const faqItems = getFaqItems(article.faqJson);
+  const coverImageUrl = getHttpImageUrl(article.coverImage);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -224,9 +235,18 @@ export default async function BlogDetailPage({
             {article.title}
           </h1>
 
-          <div className="mt-8 flex aspect-[16/9] items-center justify-center rounded-lg border border-slate-200 bg-white text-center text-sm text-slate-400">
-            图片占位：{article.title}
-          </div>
+          {coverImageUrl ? (
+            <div
+              className="mt-8 aspect-[16/9] rounded-lg border border-slate-200 bg-cover bg-center shadow-sm"
+              style={{ backgroundImage: `url("${coverImageUrl}")` }}
+              role="img"
+              aria-label={`${article.title} 封面图`}
+            />
+          ) : (
+            <div className="mt-8 flex aspect-[16/9] items-center justify-center rounded-lg border border-slate-200 bg-white text-center text-sm text-slate-400">
+              图片占位：{article.title}
+            </div>
+          )}
 
           <div className="mt-8 space-y-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             {renderContent(article.content)}

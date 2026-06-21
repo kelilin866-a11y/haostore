@@ -50,6 +50,7 @@ export default async function EditArticlePage({
           slug: article.slug,
           summary: article.summary,
           content: article.content,
+          coverImage: article.coverImage,
           seoTitle: article.seoTitle,
           seoDescription: article.seoDescription,
           status: article.status,
