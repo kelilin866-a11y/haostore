@@ -142,7 +142,6 @@ function renderContent(content: string) {
     const trimmed = line.trim();
 
     if (!trimmed) {
-      flushLists();
       return;
     }
 
