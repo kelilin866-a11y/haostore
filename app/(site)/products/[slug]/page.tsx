@@ -62,12 +62,18 @@ export async function generateMetadata({
     return {
       title: `${product.title} - 好贸Go`,
       description: product.seoDescription || product.summary || undefined,
+      alternates: {
+        canonical: `/products/${params.slug}`,
+      },
     };
   }
 
   return {
     title: product.seoTitle || undefined,
     description: product.seoDescription || product.summary || undefined,
+    alternates: {
+      canonical: `/products/${params.slug}`,
+    },
   };
 }
 

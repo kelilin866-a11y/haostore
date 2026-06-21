@@ -152,11 +152,6 @@ export default async function BlogDetailPage({
           <h1 className="text-3xl font-bold leading-tight text-primary sm:text-4xl">
             {article.title}
           </h1>
-          <div className="mt-4 grid gap-1 text-sm text-slate-500">
-            <p>meta title：{article.seoTitle || article.title}</p>
-            <p>meta description：{article.seoDescription || "未设置"}</p>
-            <p>canonical：{article.canonical || `/blog/${article.slug}`}</p>
-          </div>
 
           <div className="mt-8 flex aspect-[16/9] items-center justify-center rounded-lg border border-slate-200 bg-white text-center text-sm text-slate-400">
             图片占位：{article.title}

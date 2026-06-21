@@ -9,8 +9,13 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://haomaogo.com").replace(
+    /\/$/,
+    "",
+  );
 
   return {
+    metadataBase: new URL(siteUrl),
     title: settings.default_seo_title,
     description: settings.default_seo_description,
     other: {
