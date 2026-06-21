@@ -11,12 +11,13 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
-import { ArticleStatus, ProductStatus, VariantStatus } from "@prisma/client";
+import { ProductStatus, VariantStatus } from "@prisma/client";
 
 import { ProductCard } from "@/components/site/ProductCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getVisiblePublishedArticleWhere } from "@/lib/article-visibility";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -152,7 +153,7 @@ export default async function TgTopicPage() {
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     }),
     prisma.article.findMany({
-      where: { status: ArticleStatus.published },
+      where: getVisiblePublishedArticleWhere(),
       include: { category: true },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       take: 50,
@@ -399,7 +400,7 @@ export default async function TgTopicPage() {
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-                    {formatDate(article.publishedAt)}
+                    {formatDate(article.publishedAt ?? article.createdAt)}
                   </span>
                 </div>
                 <h3 className="mt-4 line-clamp-2 text-lg font-semibold leading-7 text-[#0F172A]">

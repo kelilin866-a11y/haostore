@@ -53,6 +53,7 @@ export default async function EditArticlePage({
           coverImage: article.coverImage,
           seoTitle: article.seoTitle,
           seoDescription: article.seoDescription,
+          publishedAt: article.publishedAt?.toISOString() ?? null,
           status: article.status,
         }}
       />

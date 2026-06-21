@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         seoDescription: data.seoDescription,
         status: data.status,
         canonical: `/blog/${data.slug}`,
-        publishedAt: getPublishedAt(data.status),
+        publishedAt: getPublishedAt(data.status, null, data.publishedAt),
       },
     });
   } catch (error) {

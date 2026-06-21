@@ -1,7 +1,6 @@
-import { ArticleStatus } from "@prisma/client";
-
 import { ArticleCard } from "@/components/site/ArticleCard";
 import { Badge } from "@/components/ui/badge";
+import { getVisiblePublishedArticleWhere } from "@/lib/article-visibility";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +21,7 @@ export default async function BlogPage() {
       select: { id: true, name: true },
     }),
     prisma.article.findMany({
-      where: { status: ArticleStatus.published },
+      where: getVisiblePublishedArticleWhere(),
       include: { category: true },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     }),

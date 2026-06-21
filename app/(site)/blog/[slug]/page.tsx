@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArticleStatus, ProductStatus } from "@prisma/client";
+import { ProductStatus } from "@prisma/client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getVisiblePublishedArticleWhere } from "@/lib/article-visibility";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +51,51 @@ function getFaqItems(value: unknown): FaqItem[] {
   );
 }
 
+function renderInlineMarkdown(value: string, keyPrefix: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let remaining = value;
+  let index = 0;
+
+  while (remaining.length > 0) {
+    const start = remaining.indexOf("**");
+
+    if (start === -1) {
+      nodes.push(remaining);
+      break;
+    }
+
+    if (start > 0) {
+      nodes.push(remaining.slice(0, start));
+    }
+
+    const afterStart = remaining.slice(start + 2);
+    const end = afterStart.indexOf("**");
+
+    if (end === -1) {
+      nodes.push(remaining.slice(start));
+      break;
+    }
+
+    const boldText = afterStart.slice(0, end);
+
+    if (boldText) {
+      nodes.push(
+        <strong
+          key={`${keyPrefix}-strong-${index}`}
+          className="font-semibold text-slate-900"
+        >
+          {boldText}
+        </strong>,
+      );
+    }
+
+    remaining = afterStart.slice(end + 2);
+    index += 1;
+  }
+
+  return nodes;
+}
+
 function renderContent(content: string) {
   const elements: JSX.Element[] = [];
   const lines = content.replace(/\r\n/g, "\n").split("\n");
@@ -65,7 +112,9 @@ function renderContent(content: string) {
           className="list-disc space-y-2 pl-6 text-sm leading-7 text-slate-600"
         >
           {items.map((item, index) => (
-            <li key={`${item}-${index}`}>{item}</li>
+            <li key={`${item}-${index}`}>
+              {renderInlineMarkdown(item, `ul-${elements.length}-${index}`)}
+            </li>
           ))}
         </ul>,
       );
@@ -80,7 +129,9 @@ function renderContent(content: string) {
           className="list-decimal space-y-2 pl-6 text-sm leading-7 text-slate-600"
         >
           {items.map((item, index) => (
-            <li key={`${item}-${index}`}>{item}</li>
+            <li key={`${item}-${index}`}>
+              {renderInlineMarkdown(item, `ol-${elements.length}-${index}`)}
+            </li>
           ))}
         </ol>,
       );
@@ -102,7 +153,7 @@ function renderContent(content: string) {
           key={`h3-${index}`}
           className="pt-2 text-xl font-semibold leading-8 text-primary"
         >
-          {trimmed.replace(/^###\s+/, "")}
+          {renderInlineMarkdown(trimmed.replace(/^###\s+/, ""), `h3-${index}`)}
         </h3>,
       );
       return;
@@ -115,7 +166,7 @@ function renderContent(content: string) {
           key={`h2-${index}`}
           className="pt-4 text-2xl font-semibold leading-9 text-primary"
         >
-          {trimmed.replace(/^##\s+/, "")}
+          {renderInlineMarkdown(trimmed.replace(/^##\s+/, ""), `h2-${index}`)}
         </h2>,
       );
       return;
@@ -141,7 +192,7 @@ function renderContent(content: string) {
     flushLists();
     elements.push(
       <p key={`p-${index}`} className="text-sm leading-8 text-slate-600">
-        {trimmed}
+        {renderInlineMarkdown(trimmed, `p-${index}`)}
       </p>,
     );
   });
@@ -157,8 +208,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const article = await prisma.article.findFirst({
     where: {
+      ...getVisiblePublishedArticleWhere(),
       slug: params.slug,
-      status: ArticleStatus.published,
     },
     select: {
       title: true,
@@ -188,8 +239,8 @@ export default async function BlogDetailPage({
 }) {
   const article = await prisma.article.findFirst({
     where: {
+      ...getVisiblePublishedArticleWhere(),
       slug: params.slug,
-      status: ArticleStatus.published,
     },
     include: {
       category: true,
@@ -203,7 +254,7 @@ export default async function BlogDetailPage({
   const [relatedArticles, relatedProducts] = await Promise.all([
     prisma.article.findMany({
       where: {
-        status: ArticleStatus.published,
+        ...getVisiblePublishedArticleWhere(),
         slug: { not: article.slug },
       },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],

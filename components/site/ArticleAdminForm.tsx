@@ -23,6 +23,7 @@ type ArticleFormValue = {
   coverImage?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  publishedAt?: string | null;
   status?: string;
 };
 
@@ -50,6 +51,33 @@ type SeoArticleDraft = {
 
 function isHttpImageUrl(value: string) {
   return /^https?:\/\/.+/i.test(value.trim());
+}
+
+function formatDateTimeLocal(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const getPart = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${getPart("year")}-${getPart("month")}-${getPart("day")}T${getPart(
+    "hour",
+  )}:${getPart("minute")}`;
 }
 
 export function ArticleAdminForm({
@@ -246,6 +274,19 @@ export function ArticleAdminForm({
                 <option value="archived">已归档</option>
               </select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="publishedAt">发布时间</Label>
+            <Input
+              id="publishedAt"
+              name="publishedAt"
+              type="datetime-local"
+              defaultValue={formatDateTimeLocal(article?.publishedAt)}
+            />
+            <p className="text-xs leading-5 text-slate-500">
+              留空则立即发布；填写未来时间则到时间后自动显示。草稿文章不会在前台展示。
+            </p>
           </div>
 
           <div className="space-y-2">

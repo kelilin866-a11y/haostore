@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
-import { ArticleStatus, ProductStatus } from "@prisma/client";
+import { ProductStatus } from "@prisma/client";
 
+import { getVisiblePublishedArticleWhere } from "@/lib/article-visibility";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }),
       prisma.article.findMany({
         where: {
-          status: ArticleStatus.published,
+          ...getVisiblePublishedArticleWhere(),
           slug: {
             not: "",
           },

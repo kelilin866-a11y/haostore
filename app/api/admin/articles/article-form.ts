@@ -12,6 +12,7 @@ export type ParsedArticleForm = {
   coverImage: string;
   seoTitle: string;
   seoDescription: string;
+  publishedAt: Date | null;
   status: ArticleStatus;
 };
 
@@ -47,6 +48,33 @@ function parseArticleStatus(value: string) {
   return ArticleStatus.draft;
 }
 
+function parseShanghaiDateTimeLocal(value: string) {
+  if (!value) {
+    return null;
+  }
+
+  const match = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/,
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month, day, hour, minute, second = "0"] = match;
+  const timestamp = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour) - 8,
+    Number(minute),
+    Number(second),
+  );
+  const date = new Date(timestamp);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export function parseArticleForm(formData: FormData): ParsedArticleForm {
   return {
     categoryId: getFormString(formData, "categoryId"),
@@ -57,6 +85,7 @@ export function parseArticleForm(formData: FormData): ParsedArticleForm {
     coverImage: getFormString(formData, "coverImage"),
     seoTitle: getFormString(formData, "seoTitle"),
     seoDescription: getFormString(formData, "seoDescription"),
+    publishedAt: parseShanghaiDateTimeLocal(getFormString(formData, "publishedAt")),
     status: parseArticleStatus(getFormString(formData, "status")),
   };
 }
@@ -69,12 +98,16 @@ export function validateArticleForm(data: ParsedArticleForm) {
   return null;
 }
 
-export function getPublishedAt(status: ArticleStatus, current?: Date | null) {
+export function getPublishedAt(
+  status: ArticleStatus,
+  current?: Date | null,
+  requested?: Date | null,
+) {
   if (status === ArticleStatus.published) {
-    return current ?? new Date();
+    return requested ?? current ?? new Date();
   }
 
-  return null;
+  return requested ?? null;
 }
 
 export function isUniqueConstraintError(error: unknown) {

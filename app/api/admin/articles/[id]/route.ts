@@ -60,7 +60,11 @@ export async function POST(request: Request, { params }: RouteContext) {
         seoDescription: data.seoDescription,
         status: data.status,
         canonical: `/blog/${data.slug}`,
-        publishedAt: getPublishedAt(data.status, currentArticle.publishedAt),
+        publishedAt: getPublishedAt(
+          data.status,
+          currentArticle.publishedAt,
+          data.publishedAt,
+        ),
       },
     });
   } catch (error) {

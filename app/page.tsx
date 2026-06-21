@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArticleStatus, ProductStatus, VariantStatus } from "@prisma/client";
+import { ProductStatus, VariantStatus } from "@prisma/client";
 import {
   Apple,
   ArrowRight,
@@ -20,6 +20,7 @@ import {
 import { ProductCard } from "@/components/site/ProductCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getVisiblePublishedArticleWhere } from "@/lib/article-visibility";
 import { prisma } from "@/lib/db";
 import { getSiteSettings, type SiteSettings } from "@/lib/site-settings";
 
@@ -211,7 +212,7 @@ export default async function HomePage() {
       take: 6,
     }),
     prisma.article.findMany({
-      where: { status: ArticleStatus.published },
+      where: getVisiblePublishedArticleWhere(),
       include: { category: true },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       take: 6,
@@ -470,7 +471,9 @@ export default async function HomePage() {
                   <span className="rounded-full bg-[#EFF6FF] px-3 py-1 font-medium text-[#2563EB]">
                     {article.category.name}
                   </span>
-                  <span>{formatArticleDate(article.publishedAt)}</span>
+                  <span>
+                    {formatArticleDate(article.publishedAt ?? article.createdAt)}
+                  </span>
                 </div>
                 <h3 className="mt-4 line-clamp-2 text-lg font-semibold leading-7 text-[#0F172A]">
                   {article.title}
