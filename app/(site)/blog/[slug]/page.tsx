@@ -40,33 +40,104 @@ function getFaqItems(value: unknown): FaqItem[] {
 }
 
 function renderContent(content: string) {
-  return content
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
-      if (block.startsWith("### ")) {
-        return (
-          <h3 key={block} className="text-lg font-semibold text-primary">
-            {block.replace(/^###\s+/, "")}
-          </h3>
-        );
-      }
+  const elements: JSX.Element[] = [];
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  let unorderedItems: string[] = [];
+  let orderedItems: string[] = [];
 
-      if (block.startsWith("## ")) {
-        return (
-          <h2 key={block} className="text-2xl font-semibold text-primary">
-            {block.replace(/^##\s+/, "")}
-          </h2>
-        );
-      }
-
-      return (
-        <p key={block} className="text-sm leading-7 text-slate-600">
-          {block}
-        </p>
+  function flushLists() {
+    if (unorderedItems.length > 0) {
+      const items = unorderedItems;
+      unorderedItems = [];
+      elements.push(
+        <ul
+          key={`ul-${elements.length}`}
+          className="list-disc space-y-2 pl-6 text-sm leading-7 text-slate-600"
+        >
+          {items.map((item, index) => (
+            <li key={`${item}-${index}`}>{item}</li>
+          ))}
+        </ul>,
       );
-    });
+    }
+
+    if (orderedItems.length > 0) {
+      const items = orderedItems;
+      orderedItems = [];
+      elements.push(
+        <ol
+          key={`ol-${elements.length}`}
+          className="list-decimal space-y-2 pl-6 text-sm leading-7 text-slate-600"
+        >
+          {items.map((item, index) => (
+            <li key={`${item}-${index}`}>{item}</li>
+          ))}
+        </ol>,
+      );
+    }
+  }
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushLists();
+      return;
+    }
+
+    if (trimmed.startsWith("### ")) {
+      flushLists();
+      elements.push(
+        <h3
+          key={`h3-${index}`}
+          className="pt-2 text-xl font-semibold leading-8 text-primary"
+        >
+          {trimmed.replace(/^###\s+/, "")}
+        </h3>,
+      );
+      return;
+    }
+
+    if (trimmed.startsWith("## ")) {
+      flushLists();
+      elements.push(
+        <h2
+          key={`h2-${index}`}
+          className="pt-4 text-2xl font-semibold leading-9 text-primary"
+        >
+          {trimmed.replace(/^##\s+/, "")}
+        </h2>,
+      );
+      return;
+    }
+
+    if (/^-\s+/.test(trimmed)) {
+      if (orderedItems.length > 0) {
+        flushLists();
+      }
+      unorderedItems.push(trimmed.replace(/^-\s+/, ""));
+      return;
+    }
+
+    const orderedMatch = trimmed.match(/^\d+[\.\、\)]\s*(.+)$/);
+    if (orderedMatch) {
+      if (unorderedItems.length > 0) {
+        flushLists();
+      }
+      orderedItems.push(orderedMatch[1]);
+      return;
+    }
+
+    flushLists();
+    elements.push(
+      <p key={`p-${index}`} className="text-sm leading-8 text-slate-600">
+        {trimmed}
+      </p>,
+    );
+  });
+
+  flushLists();
+  return elements;
 }
 
 export async function generateMetadata({
@@ -157,7 +228,9 @@ export default async function BlogDetailPage({
             图片占位：{article.title}
           </div>
 
-          <div className="mt-8 space-y-6">{renderContent(article.content)}</div>
+          <div className="mt-8 space-y-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+            {renderContent(article.content)}
+          </div>
 
           {faqItems.length > 0 ? (
             <Card className="mt-8">
