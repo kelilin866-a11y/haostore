@@ -365,8 +365,9 @@ export function ArticleAdminForm({
               required
               className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-7 text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
             />
-            <p className="text-xs text-slate-500">
-              可使用简单 Markdown 风格标题，例如 ## 二级标题、### 三级标题、- 列表。
+            <p className="text-xs leading-5 text-slate-500">
+              建议使用标准 Markdown 格式：## 二级标题、### 三级标题、-
+              列表项、1. 数字列表。每个标题和列表项建议单独换行，避免内容挤成一整段。
             </p>
           </div>
 

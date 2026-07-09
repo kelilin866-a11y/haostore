@@ -96,9 +96,68 @@ function renderInlineMarkdown(value: string, keyPrefix: string): ReactNode[] {
   return nodes;
 }
 
+function splitInlineHeading(line: string) {
+  const headingMatch = line.match(/^(#{2,3})\s+(.+)$/);
+
+  if (!headingMatch) {
+    return [line];
+  }
+
+  const [, marker, rawText] = headingMatch;
+  const text = rawText.trim();
+  const questionEnd = text.search(/[？?]/);
+
+  if (questionEnd >= 0 && questionEnd < text.length - 1) {
+    const title = text.slice(0, questionEnd + 1).trim();
+    const rest = text.slice(questionEnd + 1).trim();
+
+    return rest ? [`${marker} ${title}`, "", rest] : [`${marker} ${title}`];
+  }
+
+  const titleEndMatch = text.match(
+    /^(.*?(?:开头说明|常见特点|常见问题|是什么|是什么意思|购买前需要注意什么|适合哪些使用场景|购买或使用前需要注意什么|相关入口))\s+(.+)$/,
+  );
+
+  if (titleEndMatch) {
+    return [
+      `${marker} ${titleEndMatch[1].trim()}`,
+      "",
+      titleEndMatch[2].trim(),
+    ];
+  }
+
+  const paragraphStartMatch = text.match(
+    /\s+(很多|这里|本文|本篇|这篇|可以理解|通常|建议|如果|购买|使用|下单|支付|订单|用户|好贸Go|群组偏|频道偏|Telegram\s+群组可以|Telegram\s+频道可以)/,
+  );
+
+  if (paragraphStartMatch?.index && paragraphStartMatch.index > 0) {
+    const title = text.slice(0, paragraphStartMatch.index).trim();
+    const rest = text.slice(paragraphStartMatch.index).trim();
+
+    return rest ? [`${marker} ${title}`, "", rest] : [`${marker} ${title}`];
+  }
+
+  return [`${marker} ${text}`];
+}
+
+function normalizeMarkdownContent(content: string) {
+  const normalized = content
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+(#{2,3})\s+/g, "\n\n$1 ")
+    .replace(/([^\n])\s+-\s+/g, "$1\n\n- ")
+    .replace(/([^\n])\s+(\d+)[\.\、\)]\s+/g, "$1\n\n$2. ");
+
+  return normalized
+    .split("\n")
+    .flatMap((line) => splitInlineHeading(line.trim()))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function renderContent(content: string) {
   const elements: JSX.Element[] = [];
-  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const lines = normalizeMarkdownContent(content).split("\n");
   let unorderedItems: string[] = [];
   let orderedItems: string[] = [];
 
