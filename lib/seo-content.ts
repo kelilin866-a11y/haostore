@@ -3,7 +3,7 @@ export type SeoInternalLinkRule = {
   url: string;
 };
 
-export const SEO_INTERNAL_LINK_RULES: SeoInternalLinkRule[] = [
+export const SEO_INTERNAL_LINK_MAPPINGS: SeoInternalLinkRule[] = [
   {
     keywords: [
       "TG账号购买",
@@ -33,6 +33,8 @@ export const SEO_INTERNAL_LINK_RULES: SeoInternalLinkRule[] = [
     url: "/blog",
   },
 ];
+
+export const SEO_INTERNAL_LINK_RULES = SEO_INTERNAL_LINK_MAPPINGS;
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -126,10 +128,11 @@ function linkKeywordInText(text: string, keyword: string, url: string) {
   return { text, linked: false };
 }
 
-export function applySeoInternalLinks(content: string, maxLinks = 6) {
+export function applySeoInternalLinks(content: string, maxLinks = 5) {
   let totalLinks = 0;
   const linkCountByUrl = new Map<string, number>();
-  const sortedRules = SEO_INTERNAL_LINK_RULES.map((rule) => ({
+  const linkedKeywords = new Set<string>();
+  const sortedRules = SEO_INTERNAL_LINK_MAPPINGS.map((rule) => ({
     ...rule,
     keywords: [...rule.keywords].sort((a, b) => b.length - a.length),
   }));
@@ -158,10 +161,15 @@ export function applySeoInternalLinks(content: string, maxLinks = 6) {
             break;
           }
 
+          if (linkedKeywords.has(keyword)) {
+            continue;
+          }
+
           const result = linkKeywordInText(nextLine, keyword, rule.url);
           if (result.linked) {
             nextLine = result.text;
             totalLinks += 1;
+            linkedKeywords.add(keyword);
             linkCountByUrl.set(rule.url, urlCount + 1);
             break;
           }

@@ -25,8 +25,8 @@ export function generateMetadata({
   const tag = decodeURIComponent(params.tag);
 
   return {
-    title: `${tag}相关文章 - 好贸Go`,
-    description: `查看好贸Go关于${tag}的教程、购买指南和常见问题。`,
+    title: `${tag}相关文章｜购买指南与使用教程 - 好贸Go`,
+    description: `好贸Go整理${tag}相关账号教程、购买指南、常见问题和售后说明，帮助用户购买前了解规格、支付、发货和订单查询流程。`,
     alternates: {
       canonical: `/blog/tags/${encodeURIComponent(tag)}`,
     },

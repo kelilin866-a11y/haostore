@@ -52,6 +52,33 @@ function getFaqItems(value: unknown): FaqItem[] {
   );
 }
 
+function getRelatedArticleScore(
+  article: {
+    title: string;
+    summary: string | null;
+    seoKeywords: string | null;
+    publishedAt: Date | null;
+    createdAt: Date;
+  },
+  currentTags: string[],
+  currentSeoKeywords: string | null,
+) {
+  const articleTags = parseArticleTags(article.seoKeywords);
+  const tagMatchCount = articleTags.filter((tag) =>
+    currentTags.includes(tag),
+  ).length;
+  const currentKeywords = parseArticleTags(currentSeoKeywords);
+  const searchableText = `${article.title} ${article.summary ?? ""} ${
+    article.seoKeywords ?? ""
+  }`;
+  const keywordMatchCount = currentKeywords.filter((keyword) =>
+    searchableText.includes(keyword),
+  ).length;
+  const publishTime = (article.publishedAt ?? article.createdAt).getTime();
+
+  return tagMatchCount * 1_000_000_000_000 + keywordMatchCount * 1_000_000_000 + publishTime;
+}
+
 function renderBoldText(value: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let remaining = value;
@@ -280,15 +307,23 @@ export default async function BlogDetailPage({
     notFound();
   }
 
-  const [relatedArticles, relatedProducts] = await Promise.all([
+  const currentArticleTags = parseArticleTags(article.seoKeywords);
+  const [relatedArticleCandidates, relatedProducts] = await Promise.all([
     prisma.article.findMany({
       where: {
         ...getVisiblePublishedArticleWhere(),
         slug: { not: article.slug },
       },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-      take: 3,
-      select: { slug: true, title: true },
+      take: 24,
+      select: {
+        slug: true,
+        title: true,
+        summary: true,
+        seoKeywords: true,
+        publishedAt: true,
+        createdAt: true,
+      },
     }),
     prisma.product.findMany({
       where: { status: ProductStatus.active },
@@ -297,10 +332,21 @@ export default async function BlogDetailPage({
       select: { slug: true, title: true, summary: true },
     }),
   ]);
+  const relatedArticles = relatedArticleCandidates
+    .sort(
+      (left, right) =>
+        getRelatedArticleScore(
+          right,
+          currentArticleTags,
+          article.seoKeywords,
+        ) -
+        getRelatedArticleScore(left, currentArticleTags, article.seoKeywords),
+    )
+    .slice(0, 3);
 
   const faqItems = getFaqItems(article.faqJson);
   const coverImageUrl = getHttpImageUrl(article.coverImage);
-  const articleTags = parseArticleTags(article.seoKeywords);
+  const articleTags = currentArticleTags;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
