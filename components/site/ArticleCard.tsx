@@ -17,6 +17,7 @@ type ArticleCardValue = {
   date: string;
   excerpt: string;
   keyword?: string | null;
+  tags?: string[];
 };
 
 export function ArticleCard({ article }: { article: ArticleCardValue }) {
@@ -31,7 +32,19 @@ export function ArticleCard({ article }: { article: ArticleCardValue }) {
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-3">
         <p className="text-sm leading-6 text-slate-500">{article.excerpt}</p>
-        {article.keyword ? (
+        {article.tags && article.tags.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {article.tags.slice(0, 4).map((tag) => (
+              <Link
+                key={tag}
+                href={`/blog/tags/${encodeURIComponent(tag)}`}
+                className="rounded-full border border-slate-200 px-2.5 py-1 text-xs text-slate-500 transition hover:border-teal-200 hover:text-deal"
+              >
+                #{tag}
+              </Link>
+            ))}
+          </div>
+        ) : article.keyword ? (
           <p className="text-xs text-slate-500">
             目标关键词：<span className="text-primary">{article.keyword}</span>
           </p>

@@ -23,6 +23,7 @@ type ArticleFormValue = {
   coverImage?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  seoKeywords?: string | null;
   publishedAt?: string | null;
   status?: string;
 };
@@ -47,6 +48,7 @@ type SeoArticleDraft = {
   content?: string;
   seoTitle?: string;
   seoDescription?: string;
+  seoKeywords?: string;
 };
 
 function isHttpImageUrl(value: string) {
@@ -125,6 +127,7 @@ export function ArticleAdminForm({
         "content",
         "seoTitle",
         "seoDescription",
+        "seoKeywords",
       ];
 
       fields.forEach((field) => {
@@ -367,7 +370,7 @@ export function ArticleAdminForm({
             />
             <p className="text-xs leading-5 text-slate-500">
               建议使用标准 Markdown 格式：## 二级标题、### 三级标题、-
-              列表项、1. 数字列表。每个标题和列表项建议单独换行，避免内容挤成一整段。
+              列表项、1. 数字列表。每个标题和列表项建议单独换行，保存时会自动清洗正文并补充少量 SEO 内链。
             </p>
           </div>
 
@@ -390,6 +393,19 @@ export function ArticleAdminForm({
                 className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accentblue"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="seoKeywords">文章标签</Label>
+            <Input
+              id="seoKeywords"
+              name="seoKeywords"
+              defaultValue={article?.seoKeywords ?? ""}
+              placeholder="例如：TG账号,Telegram教程,飞机号"
+            />
+            <p className="text-xs leading-5 text-slate-500">
+              多个标签用逗号、顿号或换行分隔。标签会在前台文章页展示，并进入标签聚合页。
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -22,6 +22,7 @@ function buildCopyText(draft: SeoArticleDraft) {
     `摘要：${draft.summary}`,
     `SEO标题：${draft.seoTitle}`,
     `SEO描述：${draft.seoDescription}`,
+    `文章标签：${draft.tags}`,
     "",
     "正文内容：",
     draft.content,
@@ -79,6 +80,7 @@ export function SeoArticleGenerator() {
         content: draft.content,
         seoTitle: draft.seoTitle,
         seoDescription: draft.seoDescription,
+        seoKeywords: draft.tags,
       }),
     );
     window.location.href = "/admin/articles/new";
@@ -206,6 +208,11 @@ export function SeoArticleGenerator() {
           </div>
 
           <div className="space-y-2">
+            <Label>文章标签</Label>
+            <Input value={draft.tags} readOnly />
+          </div>
+
+          <div className="space-y-2">
             <Label>正文内容 Markdown 模板</Label>
             <textarea
               value={draft.content}
@@ -213,9 +220,6 @@ export function SeoArticleGenerator() {
               rows={18}
               className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-7 text-primary"
             />
-            <p className="text-xs leading-5 text-slate-500">
-              生成器会保留标题、段落和列表换行，复制到文章表单后可继续手动调整。
-            </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">

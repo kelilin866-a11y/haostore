@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
 import { ArticleCard } from "@/components/site/ArticleCard";
 import { Badge } from "@/components/ui/badge";
 import { getVisiblePublishedArticleWhere } from "@/lib/article-visibility";
@@ -14,42 +17,62 @@ function formatDate(date: Date | null) {
   return date.toLocaleDateString("zh-CN");
 }
 
-export default async function BlogPage() {
-  const [categories, articles] = await Promise.all([
-    prisma.articleCategory.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-      select: { id: true, name: true },
-    }),
-    prisma.article.findMany({
-      where: getVisiblePublishedArticleWhere(),
-      include: { category: true },
-      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-    }),
-  ]);
+export function generateMetadata({
+  params,
+}: {
+  params: { tag: string };
+}): Metadata {
+  const tag = decodeURIComponent(params.tag);
+
+  return {
+    title: `${tag}相关文章 - 好贸Go`,
+    description: `查看好贸Go关于${tag}的教程、购买指南和常见问题。`,
+    alternates: {
+      canonical: `/blog/tags/${encodeURIComponent(tag)}`,
+    },
+  };
+}
+
+export default async function BlogTagPage({
+  params,
+}: {
+  params: { tag: string };
+}) {
+  const tag = decodeURIComponent(params.tag).trim();
+
+  if (!tag) {
+    notFound();
+  }
+
+  const candidates = await prisma.article.findMany({
+    where: {
+      ...getVisiblePublishedArticleWhere(),
+      seoKeywords: { contains: tag },
+    },
+    include: { category: true },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+  });
+  const articles = candidates.filter((article) =>
+    parseArticleTags(article.seoKeywords).includes(tag),
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="mb-8">
-        <p className="text-sm font-semibold text-accentblue">SEO 文章</p>
-        <h1 className="mt-2 text-3xl font-bold text-primary">文章列表</h1>
+        <Badge variant="deal" className="px-3 py-1">
+          #{tag}
+        </Badge>
+        <h1 className="mt-4 text-3xl font-bold text-primary">
+          {tag}相关文章
+        </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-          展示已发布的使用教程、常见问题和订单帮助文章，内容由后台 SEO 文章管理维护。
+          聚合展示与 {tag} 相关的账号教程、购买指南、常见问题和售后说明。
         </p>
       </div>
-      <div className="mb-8 flex flex-wrap gap-2">
-        <Badge variant="deal" className="px-3 py-1">
-          全部
-        </Badge>
-        {categories.map((category) => (
-          <Badge key={category.id} variant="outline" className="px-3 py-1">
-            {category.name}
-          </Badge>
-        ))}
-      </div>
+
       {articles.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-          暂无已发布文章。
+          暂无该标签下的已发布文章。
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-3">

@@ -58,6 +58,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         coverImage: data.coverImage,
         seoTitle: data.seoTitle,
         seoDescription: data.seoDescription,
+        seoKeywords: data.seoKeywords,
         status: data.status,
         canonical: `/blog/${data.slug}`,
         publishedAt: getPublishedAt(

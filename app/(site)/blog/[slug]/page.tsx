@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getVisiblePublishedArticleWhere } from "@/lib/article-visibility";
 import { prisma } from "@/lib/db";
+import { normalizeMarkdownContent, parseArticleTags } from "@/lib/seo-content";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ function getFaqItems(value: unknown): FaqItem[] {
   );
 }
 
-function renderInlineMarkdown(value: string, keyPrefix: string): ReactNode[] {
+function renderBoldText(value: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let remaining = value;
   let index = 0;
@@ -96,63 +97,33 @@ function renderInlineMarkdown(value: string, keyPrefix: string): ReactNode[] {
   return nodes;
 }
 
-function splitInlineHeading(line: string) {
-  const headingMatch = line.match(/^(#{2,3})\s+(.+)$/);
+function renderInlineMarkdown(value: string, keyPrefix: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const segments = value.split(/(\[[^\]]+\]\([^)]+\))/g);
 
-  if (!headingMatch) {
-    return [line];
-  }
+  segments.forEach((segment, index) => {
+    const linkMatch = segment.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
 
-  const [, marker, rawText] = headingMatch;
-  const text = rawText.trim();
-  const questionEnd = text.search(/[？?]/);
+    if (linkMatch) {
+      const [, label, href] = linkMatch;
+      const safeHref = href.startsWith("/") ? href : "#";
 
-  if (questionEnd >= 0 && questionEnd < text.length - 1) {
-    const title = text.slice(0, questionEnd + 1).trim();
-    const rest = text.slice(questionEnd + 1).trim();
+      nodes.push(
+        <Link
+          key={`${keyPrefix}-link-${index}`}
+          href={safeHref}
+          className="font-medium text-accentblue underline-offset-4 hover:underline"
+        >
+          {renderBoldText(label, `${keyPrefix}-link-${index}`)}
+        </Link>,
+      );
+      return;
+    }
 
-    return rest ? [`${marker} ${title}`, "", rest] : [`${marker} ${title}`];
-  }
+    nodes.push(...renderBoldText(segment, `${keyPrefix}-text-${index}`));
+  });
 
-  const titleEndMatch = text.match(
-    /^(.*?(?:开头说明|常见特点|常见问题|是什么|是什么意思|购买前需要注意什么|适合哪些使用场景|购买或使用前需要注意什么|相关入口))\s+(.+)$/,
-  );
-
-  if (titleEndMatch) {
-    return [
-      `${marker} ${titleEndMatch[1].trim()}`,
-      "",
-      titleEndMatch[2].trim(),
-    ];
-  }
-
-  const paragraphStartMatch = text.match(
-    /\s+(很多|这里|本文|本篇|这篇|可以理解|通常|建议|如果|购买|使用|下单|支付|订单|用户|好贸Go|群组偏|频道偏|Telegram\s+群组可以|Telegram\s+频道可以)/,
-  );
-
-  if (paragraphStartMatch?.index && paragraphStartMatch.index > 0) {
-    const title = text.slice(0, paragraphStartMatch.index).trim();
-    const rest = text.slice(paragraphStartMatch.index).trim();
-
-    return rest ? [`${marker} ${title}`, "", rest] : [`${marker} ${title}`];
-  }
-
-  return [`${marker} ${text}`];
-}
-
-function normalizeMarkdownContent(content: string) {
-  const normalized = content
-    .replace(/\r\n/g, "\n")
-    .replace(/[ \t]+(#{2,3})\s+/g, "\n\n$1 ")
-    .replace(/([^\n])\s+-\s+/g, "$1\n\n- ")
-    .replace(/([^\n])\s+(\d+)[\.\、\)]\s+/g, "$1\n\n$2. ");
-
-  return normalized
-    .split("\n")
-    .flatMap((line) => splitInlineHeading(line.trim()))
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return nodes;
 }
 
 function renderContent(content: string) {
@@ -329,6 +300,7 @@ export default async function BlogDetailPage({
 
   const faqItems = getFaqItems(article.faqJson);
   const coverImageUrl = getHttpImageUrl(article.coverImage);
+  const articleTags = parseArticleTags(article.seoKeywords);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -343,6 +315,19 @@ export default async function BlogDetailPage({
           <h1 className="text-3xl font-bold leading-tight text-primary sm:text-4xl">
             {article.title}
           </h1>
+          {articleTags.length > 0 ? (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {articleTags.map((tag) => (
+                <Link
+                  key={tag}
+                  href={`/blog/tags/${encodeURIComponent(tag)}`}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-teal-200 hover:text-deal"
+                >
+                  #{tag}
+                </Link>
+              ))}
+            </div>
+          ) : null}
 
           {coverImageUrl ? (
             <div
@@ -351,11 +336,7 @@ export default async function BlogDetailPage({
               role="img"
               aria-label={`${article.title} 封面图`}
             />
-          ) : (
-            <div className="mt-8 flex aspect-[16/9] items-center justify-center rounded-lg border border-slate-200 bg-white text-center text-sm text-slate-400">
-              图片占位：{article.title}
-            </div>
-          )}
+          ) : null}
 
           <div className="mt-8 space-y-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             {renderContent(article.content)}

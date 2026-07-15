@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { ArticleStatus, Prisma } from "@prisma/client";
 
 import { getAdminSession } from "@/lib/admin-auth";
+import {
+  normalizeAndLinkArticleContent,
+  stringifyArticleTags,
+} from "@/lib/seo-content";
 
 export type ParsedArticleForm = {
   categoryId: string;
@@ -12,6 +16,7 @@ export type ParsedArticleForm = {
   coverImage: string;
   seoTitle: string;
   seoDescription: string;
+  seoKeywords: string;
   publishedAt: Date | null;
   status: ArticleStatus;
 };
@@ -81,10 +86,11 @@ export function parseArticleForm(formData: FormData): ParsedArticleForm {
     title: getFormString(formData, "title"),
     slug: getFormString(formData, "slug"),
     summary: getFormString(formData, "summary"),
-    content: getFormString(formData, "content"),
+    content: normalizeAndLinkArticleContent(getFormString(formData, "content")),
     coverImage: getFormString(formData, "coverImage"),
     seoTitle: getFormString(formData, "seoTitle"),
     seoDescription: getFormString(formData, "seoDescription"),
+    seoKeywords: stringifyArticleTags([getFormString(formData, "seoKeywords")]),
     publishedAt: parseShanghaiDateTimeLocal(getFormString(formData, "publishedAt")),
     status: parseArticleStatus(getFormString(formData, "status")),
   };
